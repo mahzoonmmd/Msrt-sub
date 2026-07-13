@@ -13,6 +13,8 @@
 
 ---
 
+<div dir="rtl">
+
 ## 🇮🇷 راهنمای فارسی
 
 ### ✨ قابلیت‌ها
@@ -31,19 +33,28 @@
 
 ### 🚀 نصب و استفاده (کاربر عادی)
 
-1. فایل `MSRT_Setup_v1.0.exe` رو از بخش [Releases](../../releases) دانلود کن
-2. نصب کن و اجرا کن
-3. از [console.groq.com](https://console.groq.com) یه **API Key رایگان** بگیر
-4. توی تنظیمات برنامه وارد کن
-5. ویدیوت رو بنداز و زیرنویس بگیر ✅
+۱. فایل `MSRT_Setup_v1.0.exe` رو از بخش [Releases](../../releases) دانلود کن
+۲. نصب کن و اجرا کن
+۳. از [console.groq.com](https://console.groq.com) یه **API Key رایگان** بگیر
+۴. توی تنظیمات برنامه وارد کن
+۵. ویدیوت رو بنداز و زیرنویس بگیر ✅
 
 > ⚠️ **به دلیل تحریم‌ها، قبل از پردازش حتماً از فیلترشکن استفاده کن**
+
+### ⚙️ محدودیت حجم فایل صوتی
+
+MSRT صدای ویدیو رو استخراج می‌کنه و به Groq Whisper میفرسته. Groq یه محدودیت **۲۵ مگابایت** برای هر فایل داره:
+
+- **ویدیوهای کوتاه (زیر ~۴۵ دقیقه):** مستقیم پردازش میشن ✅
+- **ویدیوهای بلند (بالای ~۴۵ دقیقه):** برنامه به صورت خودکار صدا رو به بخش‌های ۱۰ دقیقه‌ای تقسیم می‌کنه و جداگانه پردازش می‌کنه — برای این کار **ffprobe** هم باید داخل برنامه باشه
+
+> 💡 نسخه‌ای که دانلود می‌کنی هر دو فایل ffmpeg و ffprobe رو داخل خودش داره و نیاز به نصب جداگانه نیست.
 
 ### 🛠️ نصب برای توسعه‌دهنده
 
 **پیش‌نیازها:**
 - Python 3.11+
-- [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (اضافه شده به PATH)
+- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) (اضافه شده به PATH)
 
 ```bash
 git clone https://github.com/mahzoonmmd/Msrt-sub.git
@@ -55,10 +66,19 @@ python app.py
 ### 📦 ساخت فایل نصب
 
 ```bash
-# ویرایش مسیر ffmpeg در build.bat سپس:
+# ffmpeg.exe و ffprobe.exe رو کنار app.py بذار، بعد:
 build.bat
 # بعد از ساخت EXE، با Inno Setup فایل installer.iss رو Compile کن
 ```
+
+### 💙 حمایت از پروژه
+
+اگه MSRT برات مفید بوده، با یه ⭐ Star و Follow کمک کن این پروژه رشد کنه و بهتر بشه!
+
+[![Star](https://img.shields.io/github/stars/mahzoonmmd/Msrt-sub?style=social)](https://github.com/mahzoonmmd/Msrt-sub/stargazers)
+[![Follow](https://img.shields.io/github/followers/mahzoonmmd?style=social)](https://github.com/mahzoonmmd)
+
+</div>
 
 ---
 
@@ -88,11 +108,20 @@ build.bat
 
 > ⚠️ **Due to sanctions, use a VPN before processing**
 
+### ⚙️ File Size & Long Videos
+
+MSRT extracts audio from your video and sends it to Groq Whisper. Groq has a **25 MB limit** per file:
+
+- **Short videos (under ~45 min):** Processed directly ✅
+- **Long videos (over ~45 min):** MSRT automatically splits the audio into 10-minute chunks and processes them sequentially — this requires **ffprobe** to be bundled inside the app
+
+> 💡 The downloadable release includes both ffmpeg and ffprobe — no separate installation needed.
+
 ### 🛠️ Developer Setup
 
 **Requirements:**
 - Python 3.11+
-- [ffmpeg](https://www.gyan.dev/ffmpeg/builds/) (added to PATH)
+- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) (added to PATH)
 
 ```bash
 git clone https://github.com/mahzoonmmd/Msrt-sub.git
@@ -100,6 +129,13 @@ cd Msrt-sub
 pip install -r requirements.txt
 python app.py
 ```
+
+### 💙 Support the Project
+
+If MSRT has been useful to you, a ⭐ Star and a Follow go a long way in helping this project grow!
+
+[![Star](https://img.shields.io/github/stars/mahzoonmmd/Msrt-sub?style=social)](https://github.com/mahzoonmmd/Msrt-sub/stargazers)
+[![Follow](https://img.shields.io/github/followers/mahzoonmmd?style=social)](https://github.com/mahzoonmmd)
 
 ---
 
@@ -109,6 +145,7 @@ python app.py
 Video → ffmpeg (audio extraction)
            ↓
     Groq Whisper Large v3 (speech recognition)
+    [auto-split if audio > 25MB using ffprobe]
            ↓
     Groq LLaMA 3.3 70B (Persian translation)
            ↓
