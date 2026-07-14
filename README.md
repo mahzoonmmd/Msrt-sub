@@ -4,7 +4,7 @@
   <p><b>برنامه دسکتاپ ویندوز برای استخراج و ترجمه زیرنویس ویدیو</b></p>
   <p><i>Smart Windows desktop app for video subtitle extraction & Persian translation</i></p>
   <br>
-  <img src="https://img.shields.io/badge/version-1.0-6366F1?style=flat-square">
+  <img src="https://img.shields.io/badge/version-1.1-6366F1?style=flat-square">
   <img src="https://img.shields.io/badge/platform-Windows-0078D4?style=flat-square&logo=windows">
   <img src="https://img.shields.io/badge/Python-3.11+-3776AB?style=flat-square&logo=python&logoColor=white">
   <img src="https://img.shields.io/badge/API-Groq%20Free-34D399?style=flat-square">
@@ -21,19 +21,22 @@
 
 | قابلیت | توضیح |
 |--------|-------|
-| 🎬 پردازش ویدیو | ویدیو بنداز، زیرنویس انگلیسی دقیق بگیر |
-| 🌐 ترجمه فارسی | ترجمه هوشمند با Groq LLaMA 3.3 70B |
-| 📄 ترجمه SRT | فایل SRT انگلیسی بده، فارسی بگیر (تایمینگ دست‌نخورده) |
-| ✂️ کنترل کلمه | از ۱ تا ۱۰ کلمه در هر خط زیرنویس |
+| 🎬 پردازش ویدیوی انگلیسی | ویدیو بنداز، زیرنویس انگلیسی دقیق + ترجمه فارسی بگیر |
+| 🎥 پردازش ویدیوی فارسی | برای ویدیوهای فارسی‌زبان — زیرنویس فارسی با کیفیت بالا |
+| 🌐 ترجمه هوشمند | ترجمه روان و محاوره‌ای با Groq LLaMA 3.3 70B |
+| 📄 ترجمه SRT | فایل SRT انگلیسی بده، فارسی بگیر — تایمینگ دست‌نخورده |
+| ✂️ کنترل تعداد کلمه | از ۱ تا ۱۰ کلمه در هر خط — مستقیم از صفحه پردازش |
 | 🔄 اعمال مجدد | بدون پردازش دوباره، تعداد کلمات رو تغییر بده |
 | 📂 تاریخچه | تمام زیرنویس‌های قبلی ذخیره و قابل بازیابی |
 | 🎨 تم | دارک / روشن قابل تغییر |
 | 🇮🇷 🇺🇸 دوزبانه | رابط کاربری فارسی و انگلیسی |
-| 📊 مصرف توکن | نمایش مصرف روزانه با ریست خودکار ۲۴ ساعته |
+| 📊 مصرف توکن | نمایش مصرف روزانه با ریست خودکار ۲۴ ساعته + دکمه Refresh |
+| ℹ️ صفحه About | لینک پروژه و امکان حمایت |
+| 🎓 راهنمای اولیه | پاپ‌آپ خوش‌آمدگویی ۳ مرحله‌ای برای کاربران جدید |
 
 ### 🚀 نصب و استفاده (کاربر عادی)
 
-۱. فایل `MSRT_Setup_v1.0.exe` رو از بخش [Releases](../../releases) دانلود کن
+۱. فایل `MSRT_Setup_v1.1.exe` رو از بخش [Releases](../../releases) دانلود کن
 ۲. نصب کن و اجرا کن
 ۳. از [console.groq.com](https://console.groq.com) یه **API Key رایگان** بگیر
 ۴. توی تنظیمات برنامه وارد کن
@@ -41,20 +44,18 @@
 
 > ⚠️ **به دلیل تحریم‌ها، قبل از پردازش حتماً از فیلترشکن استفاده کن**
 
-### ⚙️ محدودیت حجم فایل صوتی
+### ⚙️ محدودیت حجم و ویدیوهای بلند
 
-MSRT صدای ویدیو رو استخراج می‌کنه و به Groq Whisper میفرسته. Groq یه محدودیت **۲۵ مگابایت** برای هر فایل داره:
+MSRT صدای ویدیو رو استخراج می‌کنه و به Groq Whisper میفرسته. Groq یه محدودیت **۲۵ مگابایت** برای هر فایل صوتی داره:
 
 - **ویدیوهای کوتاه (زیر ~۴۵ دقیقه):** مستقیم پردازش میشن ✅
-- **ویدیوهای بلند (بالای ~۴۵ دقیقه):** برنامه به صورت خودکار صدا رو به بخش‌های ۱۰ دقیقه‌ای تقسیم می‌کنه و جداگانه پردازش می‌کنه — برای این کار **ffprobe** هم باید داخل برنامه باشه
-
-> 💡 نسخه‌ای که دانلود می‌کنی هر دو فایل ffmpeg و ffprobe رو داخل خودش داره و نیاز به نصب جداگانه نیست.
+- **ویدیوهای بلند (بالای ~۴۵ دقیقه):** برنامه به صورت خودکار صدا رو به بخش‌های ۱۰ دقیقه‌ای تقسیم می‌کنه — نیاز به ffprobe داره که داخل نسخه نصبی موجوده ✅
 
 ### 🛠️ نصب برای توسعه‌دهنده
 
 **پیش‌نیازها:**
 - Python 3.11+
-- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) (اضافه شده به PATH)
+- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) در PATH
 
 ```bash
 git clone https://github.com/mahzoonmmd/Msrt-sub.git
@@ -73,7 +74,7 @@ build.bat
 
 ### 💙 حمایت از پروژه
 
-اگه MSRT برات مفید بوده، با یه ⭐ Star و Follow کمک کن این پروژه رشد کنه و بهتر بشه!
+اگه MSRT برات مفید بوده، با یه ⭐ **Star** و **Follow** کمک کن این پروژه رشد کنه!
 
 [![Star](https://img.shields.io/github/stars/mahzoonmmd/Msrt-sub?style=social)](https://github.com/mahzoonmmd/Msrt-sub/stargazers)
 [![Follow](https://img.shields.io/github/followers/mahzoonmmd?style=social)](https://github.com/mahzoonmmd)
@@ -88,19 +89,22 @@ build.bat
 
 | Feature | Description |
 |---------|-------------|
-| 🎬 Video Processing | Drop a video, get accurate English subtitles |
-| 🌐 Persian Translation | AI-powered translation via Groq LLaMA 3.3 70B |
+| 🎬 English Video Processing | Drop a video, get accurate English subtitles + Persian translation |
+| 🎥 Persian Video Processing | For Persian-language videos — high-quality Persian subtitles |
+| 🌐 Smart Translation | Natural, conversational translation via Groq LLaMA 3.3 70B |
 | 📄 SRT Translation | Input English SRT → Output Persian SRT (timings preserved) |
-| ✂️ Word Control | 1–10 words per subtitle line |
+| ✂️ Word Count Control | 1–10 words per subtitle line — directly from the process screen |
 | 🔄 Re-apply | Change word count without reprocessing |
 | 📂 History | All past subtitles saved and reopenable |
 | 🎨 Theme | Dark / Light mode |
 | 🇮🇷 🇺🇸 Bilingual | Persian and English UI |
-| 📊 Token Usage | Daily usage display with automatic 24h reset |
+| 📊 Token Usage | Daily usage with automatic 24h reset + Refresh button |
+| ℹ️ About Page | Project link and support options |
+| 🎓 Onboarding | 3-step welcome dialog for new users |
 
 ### 🚀 Installation (End User)
 
-1. Download `MSRT_Setup_v1.0.exe` from [Releases](../../releases)
+1. Download `MSRT_Setup_v1.1.exe` from [Releases](../../releases)
 2. Install and launch
 3. Get a **free API Key** from [console.groq.com](https://console.groq.com)
 4. Enter it in Settings
@@ -110,18 +114,16 @@ build.bat
 
 ### ⚙️ File Size & Long Videos
 
-MSRT extracts audio from your video and sends it to Groq Whisper. Groq has a **25 MB limit** per file:
+MSRT extracts audio from your video and sends it to Groq Whisper. Groq has a **25 MB limit** per audio file:
 
 - **Short videos (under ~45 min):** Processed directly ✅
-- **Long videos (over ~45 min):** MSRT automatically splits the audio into 10-minute chunks and processes them sequentially — this requires **ffprobe** to be bundled inside the app
-
-> 💡 The downloadable release includes both ffmpeg and ffprobe — no separate installation needed.
+- **Long videos (over ~45 min):** MSRT automatically splits audio into 10-minute chunks — requires ffprobe, which is bundled in the installer ✅
 
 ### 🛠️ Developer Setup
 
 **Requirements:**
 - Python 3.11+
-- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) (added to PATH)
+- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) in PATH
 
 ```bash
 git clone https://github.com/mahzoonmmd/Msrt-sub.git
@@ -132,7 +134,7 @@ python app.py
 
 ### 💙 Support the Project
 
-If MSRT has been useful to you, a ⭐ Star and a Follow go a long way in helping this project grow!
+If MSRT has been useful, a ⭐ **Star** and **Follow** help this project grow!
 
 [![Star](https://img.shields.io/github/stars/mahzoonmmd/Msrt-sub?style=social)](https://github.com/mahzoonmmd/Msrt-sub/stargazers)
 [![Follow](https://img.shields.io/github/followers/mahzoonmmd?style=social)](https://github.com/mahzoonmmd)
@@ -173,7 +175,7 @@ Msrt-sub/
 
 ## 🤝 Contributing
 
-Pull requests are welcome! For major changes, please open an issue first.
+Pull requests welcome! For major changes, open an issue first.
 
 ## 📄 License
 
