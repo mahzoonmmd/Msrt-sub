@@ -203,19 +203,26 @@ def translate_batches(client, segments, src_lang="en"):
         batch=segments[i:i+60]
         numbered="\n".join(f"[{j}] {s['text']}" for j,s in enumerate(batch))
         if src_lang=="fa":
-            prompt=("You are a professional translator. Translate each numbered Persian (Farsi) line to natural English.\n"
-                    "Rules:\n- Output ONLY the translated lines\n- Keep numbering [0],[1],...\n"
-                    "- No explanation or extra text\n\n"+numbered)
+            prompt=("Translate each numbered Persian line to natural English.\n"
+                    "Output ONLY translated lines with numbering [0],[1],... — nothing else.\n\n"+numbered)
         else:
-            prompt=("You are a professional Persian translator. Translate each numbered English line to fluent, natural Persian (Farsi).\n"
-                    "Important: Use correct Persian grammar and natural everyday language. Avoid word-for-word translation.\n"
-                    "Rules:\n- Output ONLY the translated lines\n- Keep numbering [0],[1],...\n"
-                    "- No explanation or extra text\n\n"+numbered)
+            prompt=(
+                "Translate each numbered English subtitle line to natural, fluent Persian (Farsi).\n"
+                "Guidelines:\n"
+                "- Use everyday conversational Persian, not formal/literary\n"
+                "- Keep the same meaning and tone as the original\n"
+                "- For technical terms, use common Persian equivalents\n"
+                "- Do NOT transliterate English words into Persian letters — always translate\n"
+                "- Output ONLY the translated lines with numbering [0],[1],... — nothing else\n\n"
+                +numbered
+            )
         resp=client.chat.completions.create(
             model="llama-3.3-70b-versatile",
-            messages=[{"role":"system","content":"You are an expert translator. Output only translations, nothing else."},
-                      {"role":"user","content":prompt}],
-            temperature=0.1, max_tokens=4096)
+            messages=[
+                {"role":"system","content":"You are an expert subtitle translator. Output only numbered translations, no explanations, no extra text."},
+                {"role":"user","content":prompt}
+            ],
+            temperature=0.15, max_tokens=4096)
         fa_map={}
         for line in resp.choices[0].message.content.strip().split("\n"):
             m=re.match(r"\[(\d+)\]\s*(.*)",line.strip())
