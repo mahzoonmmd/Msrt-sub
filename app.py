@@ -548,8 +548,12 @@ class ProcessPage(QWidget):
         self.rfbtn.setText(T("refresh")); _sb(self.rfbtn)
         self.cpbtn.setText(T("copy")); _sb(self.cpbtn)
         self.nwbtn.setText(T("new_video")); _sb(self.nwbtn)
-        self.dlbtn_en.setText(T("dl_srt")); _sb(self.dlbtn_en)
-        self.dlbtn_fa.setText(T("dl_srt_fa")); _sb(self.dlbtn_fa,primary=True)
+        # Both download buttons: blue, RTL text
+        dl_style=f"QPushButton{{background:{t('accent')};color:white;border-radius:9px;font-size:12px;font-weight:600;border:none;padding:0 12px;}}QPushButton:hover{{background:{t('accent2')}}}"
+        self.dlbtn_en.setText(T("dl_srt")); self.dlbtn_en.setStyleSheet(dl_style)
+        self.dlbtn_en.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.dlbtn_fa.setText(T("dl_srt_fa")); self.dlbtn_fa.setStyleSheet(dl_style)
+        self.dlbtn_fa.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.dz.set_hint(T("drop_hint"))
 
     def _update_tabs(self):
@@ -591,13 +595,13 @@ class ProcessPage(QWidget):
     def _show(self,segs):
         self.segments=segs; self.rfrm.show()
         self._update_tabs()
-        # For FA video: tab0=FA text, tab1=EN text, srt=FA srt
-        # For EN video: tab0=EN text, tab1=FA text, srt=EN srt
         if self._vid_lang=="fa":
-            self.tab0.setPlainText(to_text(segs,"text"))  # original FA
-            self.tab1.setPlainText(to_text(segs,"fa"))    # EN translation stored in fa field
-            self.sr.setPlainText(to_srt(segs,fa=False))   # FA srt (original text)
+            # FA video: tab0=original FA, tab1=EN translation, srt=FA
+            self.tab0.setPlainText(to_text(segs,"en"))   # "text" field has FA (original)
+            self.tab1.setPlainText(to_text(segs,"fa"))   # "fa" field has EN translation
+            self.sr.setPlainText(to_srt(segs,fa=False))  # original text (FA) in SRT
         else:
+            # EN video: tab0=original EN, tab1=FA translation, srt=EN
             self.tab0.setPlainText(to_text(segs,"en"))
             self.tab1.setPlainText(to_text(segs,"fa"))
             self.sr.setPlainText(to_srt(segs,fa=False))
@@ -767,8 +771,7 @@ class SettingsPage(QWidget):
             f=QFrame(); f.setFrameShape(QFrame.Shape.HLine); f.setStyleSheet(f"color:{t('border')}"); return f
         sl.addWidget(H(T("settings"),18,True))
         # API Key
-        sl.addWidget(H("🔑  "+T("groq_key"),13,True)); sl.addWidget(hint(T("groq_hint")))
-        self.key_in=QLineEdit(); self.key_in.setPlaceholderText("gsk_...")
+        sl.addWidget(H("🔑  "+T("groq_key"),13,True)); sl.addWidget(hint(T("groq_hint")))        self.key_in=QLineEdit(); self.key_in.setPlaceholderText("gsk_...")
         self.key_in.setEchoMode(QLineEdit.EchoMode.Password); self.key_in.setText(self.cfg.value("groq_key",""))
         self.key_in.setFixedHeight(44)
         self.key_in.setStyleSheet(f"QLineEdit{{background:{t('card')};border:1px solid {t('border')};border-radius:9px;color:{t('text')};padding:0 14px;font-size:13px;}}QLineEdit:focus{{border-color:{t('accent')}}}")
@@ -807,7 +810,16 @@ class SettingsPage(QWidget):
         self.fabtn=mk("🇮🇷  فارسی",h=38,w=130); self.enbtn=mk("🇺🇸  English",h=38,w=130)
         self.fabtn.clicked.connect(lambda:self._lang("fa")); self.enbtn.clicked.connect(lambda:self._lang("en"))
         self._rlang(); lrow.addWidget(self.fabtn); lrow.addWidget(self.enbtn); lrow.addStretch(); sl.addLayout(lrow)
+        sl.addWidget(div())
+        # Show onboarding again
+        ob_btn=mk("👋  "+("نمایش راهنمای اولیه" if LANG=="fa" else "Show Welcome Guide"),h=38)
+        ob_btn.clicked.connect(self._show_ob); sl.addWidget(ob_btn)
         sl.addStretch(); scroll.setWidget(w); self.lay.addWidget(scroll)
+
+    def _show_ob(self):
+        from PyQt6.QtWidgets import QDialog
+        self.cfg.setValue("onboarded","false")
+        QMessageBox.information(self,"","راهنما دفعه بعد نشون داده میشه\nWill show on next launch")
     def _rtheme(self):
         is_dark=CT is DARK
         for btn,active in [(self.dbtn,is_dark),(self.lbtn,not is_dark)]:
@@ -884,13 +896,18 @@ class MainWindow(QMainWindow):
         global CT,LANG
         CT=LIGHT if cfg.value("theme","dark")=="light" else DARK
         LANG=cfg.value("lang","fa"); self._build()
-        # show onboarding on first run
-        already=cfg.value("onboarded","false")
-        if already != "true" and already != True:
-            QTimer.singleShot(400,self._show_onboarding)
+        # show onboarding on first run — handle both old bool and new string values
+        raw=cfg.value("onboarded",None)
+        if raw is None or raw == False or raw == "false" or raw == "False":
+            QTimer.singleShot(500,self._show_onboarding)
 
     def _show_onboarding(self):
-        dlg=OnboardingDialog(self); dlg.exec()
+        dlg=OnboardingDialog(self)
+        dlg.move(
+            self.x()+(self.width()-dlg.width())//2,
+            self.y()+(self.height()-dlg.height())//2
+        )
+        dlg.exec()
         QSettings("MSRT","App").setValue("onboarded","true")
 
     def _build(self):
