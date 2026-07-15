@@ -771,7 +771,8 @@ class SettingsPage(QWidget):
             f=QFrame(); f.setFrameShape(QFrame.Shape.HLine); f.setStyleSheet(f"color:{t('border')}"); return f
         sl.addWidget(H(T("settings"),18,True))
         # API Key
-        sl.addWidget(H("🔑  "+T("groq_key"),13,True)); sl.addWidget(hint(T("groq_hint")))        self.key_in=QLineEdit(); self.key_in.setPlaceholderText("gsk_...")
+        sl.addWidget(H("🔑  "+T("groq_key"),13,True)); sl.addWidget(hint(T("groq_hint")))
+        self.key_in=QLineEdit(); self.key_in.setPlaceholderText("gsk_...")
         self.key_in.setEchoMode(QLineEdit.EchoMode.Password); self.key_in.setText(self.cfg.value("groq_key",""))
         self.key_in.setFixedHeight(44)
         self.key_in.setStyleSheet(f"QLineEdit{{background:{t('card')};border:1px solid {t('border')};border-radius:9px;color:{t('text')};padding:0 14px;font-size:13px;}}QLineEdit:focus{{border-color:{t('accent')}}}")
