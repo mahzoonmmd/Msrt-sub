@@ -497,33 +497,39 @@ class ProcessPage(QWidget):
         self.pbar=QProgressBar(); self.pbar.setRange(0,4); self.pbar.setValue(0); self.pbar.setTextVisible(False); self.pbar.setFixedHeight(6)
         pfl.addWidget(self.plbl); pfl.addWidget(self.pbar); self.lay.addWidget(self.pfrm)
         self.banner=None
+        self._vid_lang="en"  # track current video language
         # result
         self.rfrm=QFrame(); self.rfrm.hide()
         rfl=QVBoxLayout(self.rfrm); rfl.setContentsMargins(0,0,0,0); rfl.setSpacing(0)
         self.tabs=QTabWidget()
-        self.en=txte(); self.fa=txte(); self.sr=txte()
-        self.tabs.addTab(self.en,""); self.tabs.addTab(self.fa,""); self.tabs.addTab(self.sr,"")
+        self.tab0=txte(); self.tab1=txte(); self.sr=txte()
+        self.tabs.addTab(self.tab0,""); self.tabs.addTab(self.tab1,""); self.tabs.addTab(self.sr,"")
         rfl.addWidget(self.tabs)
         brow=QHBoxLayout(); brow.setContentsMargins(14,10,14,14); brow.setSpacing(8)
         self.clbl=QLabel()
         self.rfbtn=mk("",h=36); self.rfbtn.clicked.connect(self.do_refresh)
         self.cpbtn=mk("",h=36); self.cpbtn.clicked.connect(self.copy)
         self.nwbtn=mk("",h=36); self.nwbtn.clicked.connect(self.reset)
-        self.dlbtn=mk("",primary=True,h=36); self.dlbtn.clicked.connect(self.dl)
+        self.dlbtn_en=mk("",h=36); self.dlbtn_en.clicked.connect(lambda:self.dl("en"))
+        self.dlbtn_fa=mk("",primary=True,h=36); self.dlbtn_fa.clicked.connect(lambda:self.dl("fa"))
         brow.addWidget(self.clbl); brow.addStretch()
-        brow.addWidget(self.rfbtn); brow.addWidget(self.cpbtn); brow.addWidget(self.nwbtn); brow.addWidget(self.dlbtn)
+        brow.addWidget(self.rfbtn); brow.addWidget(self.cpbtn)
+        brow.addWidget(self.nwbtn); brow.addWidget(self.dlbtn_en); brow.addWidget(self.dlbtn_fa)
         rfl.addLayout(brow); self.lay.addWidget(self.rfrm); self.lay.addStretch()
         self.apply_theme()
 
     def apply_theme(self):
         self.ttl.setText(T("process")); self.ttl.setStyleSheet(f"color:{t('text')}")
         self.bdg.setStyleSheet(f"color:{t('muted')};font-size:11px;background:{t('card')};border-radius:10px;padding:4px 10px")
-        # language combo
         lang_lbl=self.findChild(QLabel,"lang_lbl")
         if lang_lbl: lang_lbl.setText(T("lang_select")); lang_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
+        self.vid_lang_combo.blockSignals(True)
+        cur=self.vid_lang_combo.currentData()
         self.vid_lang_combo.clear()
         self.vid_lang_combo.addItem(T("lang_en"),"en")
         self.vid_lang_combo.addItem(T("lang_fa_vid"),"fa")
+        if cur: self.vid_lang_combo.setCurrentIndex(self.vid_lang_combo.findData(cur))
+        self.vid_lang_combo.blockSignals(False)
         self.vid_lang_combo.setStyleSheet(f"QComboBox{{background:{t('card')};color:{t('text')};border:1px solid {t('border')};border-radius:8px;padding:0 10px;font-size:12px;}}QComboBox::drop-down{{border:none;}}QComboBox QAbstractItemView{{background:{t('card')};color:{t('text')};border:1px solid {t('border')}}}")
         words_lbl=self.findChild(QLabel,"words_lbl")
         if words_lbl: words_lbl.setText(T("words_label")); words_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
@@ -535,15 +541,27 @@ class ProcessPage(QWidget):
         self.pbar.setStyleSheet(f"QProgressBar{{background:{t('surface')};border-radius:3px;}}QProgressBar::chunk{{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 {t('accent')},stop:1 {t('accent2')});border-radius:3px;}}")
         self.rfrm.setStyleSheet(f"background:{t('card')};border-radius:12px")
         self.tabs.setStyleSheet(tab_style())
-        self.tabs.setTabText(0,T("tab_en")); self.tabs.setTabText(1,T("tab_fa")); self.tabs.setTabText(2,T("tab_srt"))
+        self._update_tabs()
         ts=f"background:transparent;border:none;color:{t('sub')};font-family:'Cascadia Code','Consolas',monospace;font-size:12px;padding:14px;"
-        for w in [self.en,self.fa,self.sr]: w.setStyleSheet(ts)
+        for w in [self.tab0,self.tab1,self.sr]: w.setStyleSheet(ts)
         self.clbl.setStyleSheet(f"color:{t('muted')};font-size:11px")
         self.rfbtn.setText(T("refresh")); _sb(self.rfbtn)
         self.cpbtn.setText(T("copy")); _sb(self.cpbtn)
         self.nwbtn.setText(T("new_video")); _sb(self.nwbtn)
-        self.dlbtn.setText(T("dl_srt")); _sb(self.dlbtn,primary=True)
+        self.dlbtn_en.setText(T("dl_srt")); _sb(self.dlbtn_en)
+        self.dlbtn_fa.setText(T("dl_srt_fa")); _sb(self.dlbtn_fa,primary=True)
         self.dz.set_hint(T("drop_hint"))
+
+    def _update_tabs(self):
+        """Set tab labels based on video language."""
+        if self._vid_lang=="fa":
+            self.tabs.setTabText(0,T("tab_fa"))
+            self.tabs.setTabText(1,T("tab_en"))
+            self.tabs.setTabText(2,T("tab_srt"))
+        else:
+            self.tabs.setTabText(0,T("tab_en"))
+            self.tabs.setTabText(1,T("tab_fa"))
+            self.tabs.setTabText(2,T("tab_srt"))
 
     def browse(self):
         p,_=QFileDialog.getOpenFileName(self,"","","Video (*.mp4 *.mov *.mkv *.avi *.webm)")
@@ -553,12 +571,12 @@ class ProcessPage(QWidget):
         key=self.get_key()
         if not key: QMessageBox.warning(self,T("no_key"),T("no_key_msg")); return
         self._fname=os.path.basename(path)
-        vid_lang=self.vid_lang_combo.currentData() or "en"
+        self._vid_lang=self.vid_lang_combo.currentData() or "en"
         self.dz.hide(); self.bbtn.hide(); self.rfrm.hide()
         if self.banner:
             self.lay.removeWidget(self.banner); self.banner.deleteLater(); self.banner=None
         self.pfrm.show(); self.pbar.setValue(0); self.plbl.setText(T("step1"))
-        self.worker=VideoWorker(path,key,self.wsl.value(),vid_lang)
+        self.worker=VideoWorker(path,key,self.wsl.value(),self._vid_lang)
         self.worker.progress.connect(lambda s,m:(self.pbar.setValue(s),self.plbl.setText(m)))
         self.worker.finished.connect(self.on_done); self.worker.error.connect(self.on_err); self.worker.start()
 
@@ -572,12 +590,24 @@ class ProcessPage(QWidget):
 
     def _show(self,segs):
         self.segments=segs; self.rfrm.show()
-        self.en.setPlainText(to_text(segs,"en")); self.fa.setPlainText(to_text(segs,"fa")); self.sr.setPlainText(to_srt(segs))
+        self._update_tabs()
+        # For FA video: tab0=FA text, tab1=EN text, srt=FA srt
+        # For EN video: tab0=EN text, tab1=FA text, srt=EN srt
+        if self._vid_lang=="fa":
+            self.tab0.setPlainText(to_text(segs,"text"))  # original FA
+            self.tab1.setPlainText(to_text(segs,"fa"))    # EN translation stored in fa field
+            self.sr.setPlainText(to_srt(segs,fa=False))   # FA srt (original text)
+        else:
+            self.tab0.setPlainText(to_text(segs,"en"))
+            self.tab1.setPlainText(to_text(segs,"fa"))
+            self.sr.setPlainText(to_srt(segs,fa=False))
         self.clbl.setText(f"{len(segs)} {T('sentences')}")
 
     def do_refresh(self):
         if not self.raw_segments: return
-        segs=chunk_segments(self.raw_segments,self.wsl.value()); self._show(segs)
+        wpl=self.wsl.value()
+        segs=chunk_segments(self.raw_segments,wpl)
+        self._show(segs)
 
     def on_err(self,msg):
         self.pfrm.hide(); self.dz.show(); self.bbtn.show(); QMessageBox.critical(self,T("err_title"),msg)
@@ -588,17 +618,24 @@ class ProcessPage(QWidget):
             QApplication.clipboard().setText(w.toPlainText()); self.cpbtn.setText(T("copied"))
             QTimer.singleShot(1500,lambda:self.cpbtn.setText(T("copy")))
 
-    def dl(self):
+    def dl(self,lang="en"):
         if not self.segments: return
-        p,_=QFileDialog.getSaveFileName(self,"","subtitle_en.srt","SRT (*.srt)")
+        if lang=="fa":
+            default="subtitle_fa.srt"
+            content=to_srt(self.segments,fa=True)
+        else:
+            default="subtitle_en.srt"
+            content=to_srt(self.segments,fa=False)
+        p,_=QFileDialog.getSaveFileName(self,"",default,"SRT (*.srt)")
         if p:
-            with open(p,"w",encoding="utf-8") as f: f.write(to_srt(self.segments))
+            with open(p,"w",encoding="utf-8") as f: f.write(content)
             QMessageBox.information(self,T("info_title"),T("saved_srt")+p)
 
     def reset(self):
-        self.segments=[]; self.raw_segments=[]; self.rfrm.hide(); self.dz.show(); self.bbtn.show()
+        self.segments=[]; self.raw_segments=[]; self._vid_lang="en"
+        self.rfrm.hide(); self.dz.show(); self.bbtn.show()
         if self.banner: self.lay.removeWidget(self.banner); self.banner.deleteLater(); self.banner=None
-        self.en.clear(); self.fa.clear(); self.sr.clear()
+        self.tab0.clear(); self.tab1.clear(); self.sr.clear()
 
     def load_segments(self,segs):
         self.raw_segments=segs; self._show(segs); self.dz.hide(); self.bbtn.hide(); self.pfrm.hide()
@@ -741,9 +778,11 @@ class SettingsPage(QWidget):
         sl.addWidget(div())
         # Token usage + refresh button
         tok_hdr=QHBoxLayout()
-        rfbtn=mk(T("tok_refresh"),h=32,w=110); rfbtn.clicked.connect(self._build)
+        rfbtn=mk(T("tok_refresh"),h=32,w=120); rfbtn.clicked.connect(self._build)
+        tok_title=H("📊  "+T("usage_label"),13,True)
+        tok_title.setWordWrap(False)
         tok_hdr.addWidget(rfbtn); tok_hdr.addStretch()
-        tok_hdr.addWidget(H("📊  "+T("usage_label"),13,True))
+        tok_hdr.addWidget(tok_title)
         sl.addLayout(tok_hdr)
         wh,llm=today_usage()
         for label,used,total in [(T("whisper_tok"),wh,GROQ_DAILY["whisper"]),(T("llm_tok"),llm,GROQ_DAILY["llm"])]:
@@ -846,12 +885,13 @@ class MainWindow(QMainWindow):
         CT=LIGHT if cfg.value("theme","dark")=="light" else DARK
         LANG=cfg.value("lang","fa"); self._build()
         # show onboarding on first run
-        if not cfg.value("onboarded",False):
-            QTimer.singleShot(300,self._show_onboarding)
+        already=cfg.value("onboarded","false")
+        if already != "true" and already != True:
+            QTimer.singleShot(400,self._show_onboarding)
 
     def _show_onboarding(self):
         dlg=OnboardingDialog(self); dlg.exec()
-        QSettings("MSRT","App").setValue("onboarded",True)
+        QSettings("MSRT","App").setValue("onboarded","true")
 
     def _build(self):
         cw=QWidget(); self.setCentralWidget(cw)
