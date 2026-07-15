@@ -21,20 +21,20 @@
 
 | قابلیت | توضیح |
 |--------|-------|
-| 🎬 پردازش ویدیوی انگلیسی | ویدیو بنداز، زیرنویس انگلیسی دقیق + ترجمه فارسی بگیر |
-| 🎥 پردازش ویدیوی فارسی | برای ویدیوهای فارسی‌زبان — زیرنویس فارسی با کیفیت بالا |
-| 🌐 ترجمه هوشمند | ترجمه روان و محاوره‌ای با Groq LLaMA 3.3 70B |
+| 🎬 پردازش ویدیوی انگلیسی | ویدیو بنداز، زیرنویس انگلیسی دقیق بگیر + ترجمه فارسی |
+| 🎬 پردازش ویدیوی فارسی | ویدیوهای فارسی رو هم زیرنویس می‌کنه |
+| 🌐 ترجمه فارسی روان | ترجمه محاوره‌ای و طبیعی با Groq LLaMA 3.3 70B |
 | 📄 ترجمه SRT | فایل SRT انگلیسی بده، فارسی بگیر — تایمینگ دست‌نخورده |
-| ✂️ کنترل تعداد کلمه | از ۱ تا ۱۰ کلمه در هر خط — مستقیم از صفحه پردازش |
+| ✂️ کنترل کلمه | از ۱ تا ۱۰ کلمه در هر خط زیرنویس — مستقیم از صفحه پردازش |
 | 🔄 اعمال مجدد | بدون پردازش دوباره، تعداد کلمات رو تغییر بده |
 | 📂 تاریخچه | تمام زیرنویس‌های قبلی ذخیره و قابل بازیابی |
 | 🎨 تم | دارک / روشن قابل تغییر |
 | 🇮🇷 🇺🇸 دوزبانه | رابط کاربری فارسی و انگلیسی |
-| 📊 مصرف توکن | نمایش مصرف روزانه با ریست خودکار ۲۴ ساعته + دکمه Refresh |
-| ℹ️ صفحه About | لینک پروژه و امکان حمایت |
-| 🎓 راهنمای اولیه | پاپ‌آپ خوش‌آمدگویی ۳ مرحله‌ای برای کاربران جدید |
+| 📊 مصرف توکن | نمایش مصرف روزانه با دکمه Refresh و ریست خودکار ۲۴ ساعته |
+| 👋 راهنمای اولیه | پاپ‌آپ خوش‌آمدگویی برای کاربران جدید |
+| ℹ️ درباره | لینک پروژه و حمایت از توسعه |
 
-### 🚀 نصب و استفاده (کاربر عادی)
+### 🚀 نصب و استفاده
 
 ۱. فایل `MSRT_Setup_v1.1.exe` رو از بخش [Releases](../../releases) دانلود کن
 ۲. نصب کن و اجرا کن
@@ -46,16 +46,16 @@
 
 ### ⚙️ محدودیت حجم و ویدیوهای بلند
 
-MSRT صدای ویدیو رو استخراج می‌کنه و به Groq Whisper میفرسته. Groq یه محدودیت **۲۵ مگابایت** برای هر فایل صوتی داره:
+MSRT صدای ویدیو رو استخراج و به Groq Whisper میفرسته. Groq محدودیت **۲۵ مگابایت** برای هر فایل داره:
 
 - **ویدیوهای کوتاه (زیر ~۴۵ دقیقه):** مستقیم پردازش میشن ✅
-- **ویدیوهای بلند (بالای ~۴۵ دقیقه):** برنامه به صورت خودکار صدا رو به بخش‌های ۱۰ دقیقه‌ای تقسیم می‌کنه — نیاز به ffprobe داره که داخل نسخه نصبی موجوده ✅
+- **ویدیوهای بلند (بالای ~۴۵ دقیقه):** برنامه خودکار صدا رو به بخش‌های ۱۰ دقیقه‌ای تقسیم و جداگانه پردازش می‌کنه
+
+> 💡 فایل نصبی هر دو `ffmpeg` و `ffprobe` رو داخل خودش داره — نیازی به نصب جداگانه نیست
 
 ### 🛠️ نصب برای توسعه‌دهنده
 
-**پیش‌نیازها:**
-- Python 3.11+
-- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) در PATH
+**پیش‌نیازها:** Python 3.11+ و [ffmpeg](https://www.gyan.dev/ffmpeg/builds/)
 
 ```bash
 git clone https://github.com/mahzoonmmd/Msrt-sub.git
@@ -69,7 +69,7 @@ python app.py
 ```bash
 # ffmpeg.exe و ffprobe.exe رو کنار app.py بذار، بعد:
 build.bat
-# بعد از ساخت EXE، با Inno Setup فایل installer.iss رو Compile کن
+# با Inno Setup فایل installer.iss رو Compile کن
 ```
 
 ### 💙 حمایت از پروژه
@@ -90,19 +90,19 @@ build.bat
 | Feature | Description |
 |---------|-------------|
 | 🎬 English Video Processing | Drop a video, get accurate English subtitles + Persian translation |
-| 🎥 Persian Video Processing | For Persian-language videos — high-quality Persian subtitles |
-| 🌐 Smart Translation | Natural, conversational translation via Groq LLaMA 3.3 70B |
+| 🎬 Persian Video Processing | Supports Persian-language videos too |
+| 🌐 Natural Persian Translation | Conversational translation via Groq LLaMA 3.3 70B |
 | 📄 SRT Translation | Input English SRT → Output Persian SRT (timings preserved) |
-| ✂️ Word Count Control | 1–10 words per subtitle line — directly from the process screen |
+| ✂️ Word Control | 1–10 words per line — controlled directly from the process page |
 | 🔄 Re-apply | Change word count without reprocessing |
 | 📂 History | All past subtitles saved and reopenable |
 | 🎨 Theme | Dark / Light mode |
 | 🇮🇷 🇺🇸 Bilingual | Persian and English UI |
-| 📊 Token Usage | Daily usage with automatic 24h reset + Refresh button |
-| ℹ️ About Page | Project link and support options |
-| 🎓 Onboarding | 3-step welcome dialog for new users |
+| 📊 Token Usage | Daily usage with Refresh button and automatic 24h reset |
+| 👋 Onboarding | Welcome walkthrough for new users |
+| ℹ️ About | Project link and support section |
 
-### 🚀 Installation (End User)
+### 🚀 Installation
 
 1. Download `MSRT_Setup_v1.1.exe` from [Releases](../../releases)
 2. Install and launch
@@ -114,16 +114,16 @@ build.bat
 
 ### ⚙️ File Size & Long Videos
 
-MSRT extracts audio from your video and sends it to Groq Whisper. Groq has a **25 MB limit** per audio file:
+MSRT extracts audio and sends it to Groq Whisper. Groq has a **25 MB limit** per file:
 
 - **Short videos (under ~45 min):** Processed directly ✅
-- **Long videos (over ~45 min):** MSRT automatically splits audio into 10-minute chunks — requires ffprobe, which is bundled in the installer ✅
+- **Long videos (over ~45 min):** MSRT auto-splits audio into 10-minute chunks
+
+> 💡 The installer includes both `ffmpeg` and `ffprobe` — no separate installation needed
 
 ### 🛠️ Developer Setup
 
-**Requirements:**
-- Python 3.11+
-- [ffmpeg + ffprobe](https://www.gyan.dev/ffmpeg/builds/) in PATH
+**Requirements:** Python 3.11+ and [ffmpeg](https://www.gyan.dev/ffmpeg/builds/)
 
 ```bash
 git clone https://github.com/mahzoonmmd/Msrt-sub.git
@@ -164,7 +164,7 @@ Video → ffmpeg (audio extraction)
 
 ```
 Msrt-sub/
-├── app.py            # Main application
+├── app.py            # Main application (v1.1)
 ├── icon.ico          # Windows icon
 ├── icon_256.png      # App logo
 ├── requirements.txt  # Python dependencies
@@ -175,7 +175,7 @@ Msrt-sub/
 
 ## 🤝 Contributing
 
-Pull requests welcome! For major changes, open an issue first.
+Pull requests welcome! Open an issue for major changes first.
 
 ## 📄 License
 
