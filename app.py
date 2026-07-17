@@ -387,27 +387,26 @@ class OnboardingDialog(QDialog):
     def _build(self):
         self.setStyleSheet(f"QDialog{{background:{t('card')};border-radius:16px;border:1px solid {t('border')}}}")
         lay=QVBoxLayout(self); lay.setContentsMargins(44,36,44,28); lay.setSpacing(0)
-        # logo
         logo_path=resource_path("icon_256.png")
         if os.path.exists(logo_path):
             logo=RoundedLogo(logo_path,60)
             logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
             lay.addWidget(logo,alignment=Qt.AlignmentFlag.AlignCenter)
         lay.addSpacing(18)
+        # Title — center aligned only
         self.title_lbl=QLabel()
         self.title_lbl.setFont(QFont("Segoe UI",20,QFont.Weight.Bold))
         self.title_lbl.setStyleSheet(f"color:{t('text')}")
-        self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignVCenter)
-        self.title_lbl.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self.title_lbl)
         lay.addSpacing(16)
-        self.body_lbl=QLabel()
-        self.body_lbl.setWordWrap(True)
+        # Body — use QTextEdit for proper bidirectional text rendering
+        self.body_lbl=QTextEdit()
+        self.body_lbl.setReadOnly(True)
+        self.body_lbl.setFixedHeight(110)
         self.body_lbl.setFont(QFont("Segoe UI",13))
-        self.body_lbl.setStyleSheet(f"color:{t('sub')};line-height:1.9")
-        self.body_lbl.setAlignment(Qt.AlignmentFlag.AlignRight|Qt.AlignmentFlag.AlignTop)
-        self.body_lbl.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.body_lbl.setMinimumHeight(80)
+        self.body_lbl.setStyleSheet(f"QTextEdit{{background:transparent;border:none;color:{t('sub')};font-size:13px;padding:0}}")
+        self.body_lbl.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         lay.addWidget(self.body_lbl)
         lay.addSpacing(14)
         self.link_btn=QPushButton()
@@ -418,7 +417,6 @@ class OnboardingDialog(QDialog):
         self.link_btn.clicked.connect(lambda:webbrowser.open("https://console.groq.com"))
         lay.addWidget(self.link_btn)
         lay.addStretch()
-        # buttons row
         brow=QHBoxLayout(); brow.setSpacing(10)
         self.skip_btn=QPushButton(T("ob_skip")); self.skip_btn.setFixedHeight(36)
         self.skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
@@ -430,7 +428,6 @@ class OnboardingDialog(QDialog):
         self.next_btn.setFont(QFont("Segoe UI",13,QFont.Weight.Bold))
         self.next_btn.setStyleSheet(f"QPushButton{{background:{t('accent')};color:white;border-radius:9px;font-weight:600;border:none;}}QPushButton:hover{{background:{t('accent2')}}}")
         self.next_btn.clicked.connect(self._next)
-        # dots
         self.dots=[QLabel("●") for _ in range(3)]
         dot_row=QHBoxLayout(); dot_row.setSpacing(6)
         for d in self.dots: dot_row.addWidget(d)
@@ -441,7 +438,17 @@ class OnboardingDialog(QDialog):
     def _refresh(self):
         pages=[("ob_title1","ob_body1",True),("ob_title2","ob_body2",False),("ob_title3","ob_body3",False)]
         title_k,body_k,show_link=pages[self._page]
-        self.title_lbl.setText(T(title_k)); self.body_lbl.setText(T(body_k))
+        # Title: always center
+        self.title_lbl.setText(T(title_k))
+        self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        # Body: use HTML with dir=rtl so mixed Farsi/English renders correctly
+        body_text=T(body_k).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\n","<br>")
+        self.body_lbl.setHtml(
+            f'<div dir="rtl" style="font-family:\'Segoe UI\',Tahoma,sans-serif;'
+            f'font-size:13px;color:{t("sub")};text-align:right;'
+            f'line-height:2;direction:rtl;unicode-bidi:embed">'
+            f'{body_text}</div>'
+        )
         self.link_btn.setText(T("ob_get_key")); self.link_btn.setVisible(show_link)
         self.next_btn.setText(T("ob_done") if self._page==2 else T("ob_next"))
         for i,d in enumerate(self.dots):
@@ -466,7 +473,15 @@ class ProcessPage(QWidget):
         hdr=QHBoxLayout()
         self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold))
         self.bdg=QLabel("Groq Whisper Large v3  ·  LLaMA 3.3 70B")
-        hdr.addWidget(self.ttl); hdr.addStretch(); hdr.addWidget(self.bdg); self.lay.addLayout(hdr)
+        # info button
+        self.info_btn=QPushButton("ⓘ")
+        self.info_btn.setFixedSize(32,32)
+        self.info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.info_btn.setFont(QFont("Segoe UI",14))
+        self.info_btn.setToolTip("راهنما / Guide")
+        self.info_btn.clicked.connect(self._show_guide)
+        hdr.addWidget(self.ttl); hdr.addStretch(); hdr.addWidget(self.bdg); hdr.addSpacing(8); hdr.addWidget(self.info_btn)
+        self.lay.addLayout(hdr)
         # controls row: language + words per line
         ctrl=QHBoxLayout(); ctrl.setSpacing(16)
         # language selector
@@ -545,27 +560,63 @@ class ProcessPage(QWidget):
         ts=f"background:transparent;border:none;color:{t('sub')};font-family:'Cascadia Code','Consolas',monospace;font-size:12px;padding:14px;"
         for w in [self.tab0,self.tab1,self.sr]: w.setStyleSheet(ts)
         self.clbl.setStyleSheet(f"color:{t('muted')};font-size:11px")
+        self.info_btn.setStyleSheet(f"QPushButton{{background:{t('surface')};color:{t('accent2')};border:1px solid {t('border')};border-radius:8px;font-size:15px;font-weight:600;}}QPushButton:hover{{background:{t('card')};border-color:{t('accent2')}}}")
         self.rfbtn.setText(T("refresh")); _sb(self.rfbtn)
         self.cpbtn.setText(T("copy")); _sb(self.cpbtn)
         self.nwbtn.setText(T("new_video")); _sb(self.nwbtn)
-        # Both download buttons: blue, RTL text
-        dl_style=f"QPushButton{{background:{t('accent')};color:white;border-radius:9px;font-size:12px;font-weight:600;border:none;padding:0 12px;}}QPushButton:hover{{background:{t('accent2')}}}"
-        self.dlbtn_en.setText(T("dl_srt")); self.dlbtn_en.setStyleSheet(dl_style)
+        dl_style=f"QPushButton{{background:{t('accent')};color:white;border-radius:9px;font-size:12px;font-weight:600;border:none;padding:0 14px;}}QPushButton:hover{{background:{t('accent2')}}}"
+        self.dlbtn_en.setText("دانلود SRT انگلیسی ⬇")
+        self.dlbtn_en.setStyleSheet(dl_style)
         self.dlbtn_en.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.dlbtn_fa.setText(T("dl_srt_fa")); self.dlbtn_fa.setStyleSheet(dl_style)
+        self.dlbtn_fa.setText("دانلود SRT فارسی ⬇")
+        self.dlbtn_fa.setStyleSheet(dl_style)
         self.dlbtn_fa.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.dz.set_hint(T("drop_hint"))
 
     def _update_tabs(self):
-        """Set tab labels based on video language."""
         if self._vid_lang=="fa":
-            self.tabs.setTabText(0,T("tab_fa"))
-            self.tabs.setTabText(1,T("tab_en"))
-            self.tabs.setTabText(2,T("tab_srt"))
+            self.tabs.setTabText(0,"📝 متن فارسی")
+            self.tabs.setTabText(1,"🌐 ترجمه انگلیسی")
+            self.tabs.setTabText(2,"📄 SRT فارسی")
         else:
             self.tabs.setTabText(0,T("tab_en"))
             self.tabs.setTabText(1,T("tab_fa"))
             self.tabs.setTabText(2,T("tab_srt"))
+
+    def _show(self,segs):
+        self.segments=segs; self.rfrm.show()
+        self._update_tabs()
+        if self._vid_lang=="fa":
+            # FA video:
+            # s["text"] = original Persian (Whisper output)
+            # s["fa"]   = English translation (LLaMA: FA→EN)
+            # tab0 = متن فارسی (original)
+            self.tab0.setPlainText("\n".join(f"[{fmt_ts(s['start'])}]  {s['text']}" for s in segs))
+            # tab1 = ترجمه انگلیسی
+            self.tab1.setPlainText("\n".join(f"[{fmt_ts(s['start'])}]  {s.get('fa','')}" for s in segs))
+            # SRT = Persian original
+            self.sr.setPlainText(to_srt(segs, fa=False))  # fa=False → uses s["text"] = Persian
+        else:
+            # EN video: tab0=EN text, tab1=FA translation, SRT=EN
+            self.tab0.setPlainText(to_text(segs,"en"))
+            self.tab1.setPlainText(to_text(segs,"fa"))
+            self.sr.setPlainText(to_srt(segs, fa=False))
+        self.clbl.setText(f"{len(segs)} {T('sentences')}")
+
+    def do_refresh(self):
+        if not self.raw_segments: return
+        wpl=self.wsl.value()
+        segs=chunk_segments(self.raw_segments,wpl)
+        self._show(segs)
+
+    def on_err(self,msg):
+        self.pfrm.hide(); self.dz.show(); self.bbtn.show(); QMessageBox.critical(self,T("err_title"),msg)
+
+    def copy(self):
+        w=self.tabs.currentWidget()
+        if isinstance(w,QTextEdit):
+            QApplication.clipboard().setText(w.toPlainText()); self.cpbtn.setText(T("copied"))
+            QTimer.singleShot(1500,lambda:self.cpbtn.setText(T("copy")))
 
     def browse(self):
         p,_=QFileDialog.getOpenFileName(self,"","","Video (*.mp4 *.mov *.mkv *.avi *.webm)")
@@ -592,44 +643,18 @@ class ProcessPage(QWidget):
         self.lay.insertWidget(self.lay.indexOf(self.rfrm),self.banner)
         self._show(segs); add_history(self._fname,segs,wh,llm); self.history_updated.emit()
 
-    def _show(self,segs):
-        self.segments=segs; self.rfrm.show()
-        self._update_tabs()
-        if self._vid_lang=="fa":
-            # FA video: tab0=original FA, tab1=EN translation, srt=FA
-            self.tab0.setPlainText(to_text(segs,"en"))   # "text" field has FA (original)
-            self.tab1.setPlainText(to_text(segs,"fa"))   # "fa" field has EN translation
-            self.sr.setPlainText(to_srt(segs,fa=False))  # original text (FA) in SRT
-        else:
-            # EN video: tab0=original EN, tab1=FA translation, srt=EN
-            self.tab0.setPlainText(to_text(segs,"en"))
-            self.tab1.setPlainText(to_text(segs,"fa"))
-            self.sr.setPlainText(to_srt(segs,fa=False))
-        self.clbl.setText(f"{len(segs)} {T('sentences')}")
-
-    def do_refresh(self):
-        if not self.raw_segments: return
-        wpl=self.wsl.value()
-        segs=chunk_segments(self.raw_segments,wpl)
-        self._show(segs)
-
-    def on_err(self,msg):
-        self.pfrm.hide(); self.dz.show(); self.bbtn.show(); QMessageBox.critical(self,T("err_title"),msg)
-
-    def copy(self):
-        w=self.tabs.currentWidget()
-        if isinstance(w,QTextEdit):
-            QApplication.clipboard().setText(w.toPlainText()); self.cpbtn.setText(T("copied"))
-            QTimer.singleShot(1500,lambda:self.cpbtn.setText(T("copy")))
+    def _show_guide(self):
+        dlg=OnboardingDialog(self)
+        dlg.move(
+            self.mapToGlobal(self.rect().center()).x()-dlg.width()//2,
+            self.mapToGlobal(self.rect().center()).y()-dlg.height()//2
+        )
+        dlg.exec()
 
     def dl(self,lang="en"):
         if not self.segments: return
-        if lang=="fa":
-            default="subtitle_fa.srt"
-            content=to_srt(self.segments,fa=True)
-        else:
-            default="subtitle_en.srt"
-            content=to_srt(self.segments,fa=False)
+        default="subtitle_fa.srt" if lang=="fa" else "subtitle_en.srt"
+        content=to_srt(self.segments,fa=(lang=="fa"))
         p,_=QFileDialog.getSaveFileName(self,"",default,"SRT (*.srt)")
         if p:
             with open(p,"w",encoding="utf-8") as f: f.write(content)
@@ -645,14 +670,26 @@ class ProcessPage(QWidget):
         self.raw_segments=segs; self._show(segs); self.dz.hide(); self.bbtn.hide(); self.pfrm.hide()
 
 # ═══════════════════════════════════════════════════════════════════════════════
-# SRT PAGE
+# SRT PAGE — bidirectional EN↔FA
 # ═══════════════════════════════════════════════════════════════════════════════
 class SrtPage(QWidget):
     def __init__(self,get_key):
-        super().__init__(); self.get_key=get_key; self.segs=[]; self.banner=None; self._build()
+        super().__init__(); self.get_key=get_key; self.segs=[]; self.banner=None
+        self._direction="en2fa"; self._build()
+
     def _build(self):
         self.lay=QVBoxLayout(self); self.lay.setContentsMargins(28,24,28,24); self.lay.setSpacing(14)
         self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold)); self.lay.addWidget(self.ttl)
+        # direction selector
+        dir_row=QHBoxLayout(); dir_row.setSpacing(10)
+        self.dir_lbl=QLabel()
+        self.en2fa_btn=QPushButton("انگلیسی  ←  فارسی"); self.en2fa_btn.setFixedHeight(34); self.en2fa_btn.setCheckable(True); self.en2fa_btn.setChecked(True)
+        self.fa2en_btn=QPushButton("فارسی  ←  انگلیسی"); self.fa2en_btn.setFixedHeight(34); self.fa2en_btn.setCheckable(True)
+        self.en2fa_btn.setCursor(Qt.CursorShape.PointingHandCursor); self.fa2en_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.en2fa_btn.clicked.connect(lambda:self._set_dir("en2fa"))
+        self.fa2en_btn.clicked.connect(lambda:self._set_dir("fa2en"))
+        dir_row.addWidget(self.dir_lbl); dir_row.addWidget(self.en2fa_btn); dir_row.addWidget(self.fa2en_btn); dir_row.addStretch()
+        self.lay.addLayout(dir_row)
         self.dz=DropZone(EXTS_SRT); self.dz.file_dropped.connect(self.on_file); self.lay.addWidget(self.dz)
         self.bbtn=mk(""); self.bbtn.clicked.connect(self.browse); self.lay.addWidget(self.bbtn)
         self.pfrm=QFrame(); self.pfrm.hide()
@@ -662,56 +699,79 @@ class SrtPage(QWidget):
         pfl.addWidget(self.plbl); pfl.addWidget(self.pbar); self.lay.addWidget(self.pfrm)
         self.rfrm=QFrame(); self.rfrm.hide()
         rfl=QVBoxLayout(self.rfrm); rfl.setContentsMargins(0,0,0,0); rfl.setSpacing(0)
-        self.tabs=QTabWidget(); self.fa_txt=txte(); self.tabs.addTab(self.fa_txt,""); rfl.addWidget(self.tabs)
+        self.tabs=QTabWidget(); self.out_txt=txte(); self.tabs.addTab(self.out_txt,""); rfl.addWidget(self.tabs)
         brow=QHBoxLayout(); brow.setContentsMargins(14,10,14,14); brow.setSpacing(8)
         self.nwbtn=mk("",h=36); self.nwbtn.clicked.connect(self.reset)
         self.dlbtn=mk("",primary=True,h=36); self.dlbtn.clicked.connect(self.dl)
         brow.addStretch(); brow.addWidget(self.nwbtn); brow.addWidget(self.dlbtn)
         rfl.addLayout(brow); self.lay.addWidget(self.rfrm); self.lay.addStretch()
         self.apply_theme()
+
+    def _set_dir(self,d):
+        self._direction=d; self._refresh_dir_btns()
+
+    def _refresh_dir_btns(self):
+        a=f"QPushButton{{background:{t('accent')};color:white;border-radius:8px;font-size:12px;font-weight:600;border:none;padding:0 14px;}}"
+        i=f"QPushButton{{background:{t('card')};color:{t('muted')};border-radius:8px;font-size:12px;border:1px solid {t('border')};padding:0 14px;}}QPushButton:hover{{color:{t('text')}}}"
+        self.en2fa_btn.setStyleSheet(a if self._direction=="en2fa" else i)
+        self.fa2en_btn.setStyleSheet(a if self._direction=="fa2en" else i)
+
     def apply_theme(self):
         self.ttl.setText(T("srt_page")); self.ttl.setStyleSheet(f"color:{t('text')}")
+        self.dir_lbl.setText("جهت ترجمه:" if LANG=="fa" else "Direction:"); self.dir_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
+        self._refresh_dir_btns()
         self.bbtn.setText(T("srt_browse")); _sb(self.bbtn)
         self.pfrm.setStyleSheet(f"background:{t('card')};border-radius:12px")
         self.plbl.setStyleSheet(f"color:{t('sub')};font-size:13px")
         self.pbar.setStyleSheet(f"QProgressBar{{background:{t('surface')};border-radius:3px;}}QProgressBar::chunk{{background:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 {t('accent')},stop:1 {t('accent2')});border-radius:3px;}}")
         self.rfrm.setStyleSheet(f"background:{t('card')};border-radius:12px")
-        self.tabs.setStyleSheet(tab_style()); self.tabs.setTabText(0,T("tab_srt_fa"))
-        self.fa_txt.setStyleSheet(f"background:transparent;border:none;color:{t('sub')};font-family:'Cascadia Code','Consolas',monospace;font-size:12px;padding:14px;")
+        self.tabs.setStyleSheet(tab_style())
+        self.tabs.setTabText(0,"🌐 SRT فارسی" if self._direction=="en2fa" else "🌐 SRT English")
+        self.out_txt.setStyleSheet(f"background:transparent;border:none;color:{t('sub')};font-family:'Cascadia Code','Consolas',monospace;font-size:12px;padding:14px;")
         self.nwbtn.setText(T("new_srt")); _sb(self.nwbtn)
-        self.dlbtn.setText(T("dl_srt_fa")); _sb(self.dlbtn,primary=True)
+        dl_lbl="⬇  دانلود SRT فارسی" if self._direction=="en2fa" else "⬇  Download SRT English"
+        self.dlbtn.setText(dl_lbl); _sb(self.dlbtn,primary=True)
         self.dz.set_hint(T("srt_drop_hint"))
+
     def browse(self):
         p,_=QFileDialog.getOpenFileName(self,"","","SRT (*.srt)")
         if p: self.on_file(p)
+
     def on_file(self,path):
         key=self.get_key()
         if not key: QMessageBox.warning(self,T("no_key"),T("no_key_msg")); return
-        with open(path,encoding="utf-8",errors="ignore") as f: content=f.read()
-        segs=parse_srt(content)
+        with open(path,encoding="utf-8",errors="ignore") as f: raw=f.read()
+        segs=parse_srt(raw)
         if not segs: QMessageBox.warning(self,T("err_title"),"Could not parse SRT."); return
         self.dz.hide(); self.bbtn.hide(); self.rfrm.hide()
         if self.banner: self.lay.removeWidget(self.banner); self.banner.deleteLater(); self.banner=None
-        self.pfrm.show(); self.pbar.setValue(0)
-        self.worker=SrtWorker(segs,key)
+        self.pfrm.show(); self.pbar.setValue(0); self.plbl.setText(T("srt_step"))
+        src="en" if self._direction=="en2fa" else "fa"
+        self.worker=SrtWorker(segs,key,src)
         self.worker.progress.connect(lambda s,m:(self.pbar.setValue(s),self.plbl.setText(m)))
         self.worker.finished.connect(self.on_done); self.worker.error.connect(self.on_err); self.worker.start()
+
     def on_done(self,segs):
         self.segs=segs; self.pfrm.hide()
         if self.banner: self.lay.removeWidget(self.banner); self.banner.deleteLater()
         self.banner=SuccessBanner(T("srt_done"))
         self.lay.insertWidget(self.lay.indexOf(self.rfrm),self.banner)
-        self.rfrm.show(); self.fa_txt.setPlainText(to_srt(segs,fa=True))
+        self.rfrm.show(); self.out_txt.setPlainText(to_srt(segs,fa=True))
+        self.apply_theme()
+
     def on_err(self,msg):
         self.pfrm.hide(); self.dz.show(); self.bbtn.show(); QMessageBox.critical(self,T("err_title"),msg)
+
     def dl(self):
         if not self.segs: return
-        p,_=QFileDialog.getSaveFileName(self,"","subtitle_fa.srt","SRT (*.srt)")
+        default="subtitle_fa.srt" if self._direction=="en2fa" else "subtitle_en.srt"
+        p,_=QFileDialog.getSaveFileName(self,"",default,"SRT (*.srt)")
         if p:
             with open(p,"w",encoding="utf-8") as f: f.write(to_srt(self.segs,fa=True))
             QMessageBox.information(self,T("info_title"),T("saved_srt")+p)
+
     def reset(self):
-        self.segs=[]; self.rfrm.hide(); self.dz.show(); self.bbtn.show(); self.fa_txt.clear()
+        self.segs=[]; self.rfrm.hide(); self.dz.show(); self.bbtn.show(); self.out_txt.clear()
         if self.banner: self.lay.removeWidget(self.banner); self.banner.deleteLater(); self.banner=None
 
 # ═══════════════════════════════════════════════════════════════════════════════
