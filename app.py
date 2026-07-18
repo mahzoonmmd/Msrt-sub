@@ -474,38 +474,50 @@ class ProcessPage(QWidget):
 
     def _build(self):
         self.lay=QVBoxLayout(self); self.lay.setContentsMargins(28,24,28,24); self.lay.setSpacing(14)
-        # header: title راست، badge و info چپ
+
+        # ── Header: عنوان راست، badge و ⓘ چپ ──
         hdr=QHBoxLayout()
+        hdr.setDirection(QHBoxLayout.Direction.RightToLeft)  # راست به چپ
+        self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold))
+        self.bdg=QLabel("Groq Whisper Large v3  ·  LLaMA 3.3 70B")
         self.info_btn=QPushButton("ⓘ")
         self.info_btn.setFixedSize(32,32)
         self.info_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.info_btn.setFont(QFont("Segoe UI",14))
         self.info_btn.setToolTip("راهنما / Guide")
         self.info_btn.clicked.connect(self._show_guide)
-        self.bdg=QLabel("Groq Whisper Large v3  ·  LLaMA 3.3 70B")
-        self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold))
-        # LTR order: info_btn | badge | stretch | title (title ends up on right)
-        hdr.addWidget(self.info_btn); hdr.addSpacing(8); hdr.addWidget(self.bdg)
-        hdr.addStretch(); hdr.addWidget(self.ttl)
+        # RTL: اول add = راست. پس ttl راست، بعد stretch، بعد bdg و info چپ
+        hdr.addWidget(self.ttl)
+        hdr.addStretch()
+        hdr.addWidget(self.bdg)
+        hdr.addSpacing(8)
+        hdr.addWidget(self.info_btn)
         self.lay.addLayout(hdr)
-        # controls row: اسلایدر راست، زبان ویدیو چپ اسلایدر
-        ctrl=QHBoxLayout(); ctrl.setSpacing(12)
-        # زبان ویدیو — سمت چپ
-        self.vid_lang_combo=QComboBox(); self.vid_lang_combo.setFixedHeight(34); self.vid_lang_combo.setFixedWidth(110)
-        lang_lbl=QLabel(); lang_lbl.setObjectName("lang_lbl")
-        # اسلایدر — کنار زبان ویدیو
-        words_lbl=QLabel(); words_lbl.setObjectName("words_lbl")
+
+        # ── Controls: زبان ویدیو و اسلایدر — راست‌چین ──
+        ctrl=QHBoxLayout()
+        ctrl.setDirection(QHBoxLayout.Direction.RightToLeft)
+        ctrl.setSpacing(12)
+        # اسلایدر (در RTL اول add = سمت راست)
+        self.wval=QLabel("10"); self.wval.setFixedWidth(22)
         self.wsl=QSlider(Qt.Orientation.Horizontal); self.wsl.setRange(1,10)
         self.wsl.setValue(int(QSettings("MSRT","App").value("wpl",10)))
-        self.wsl.setInvertedAppearance(False); self.wsl.setFixedWidth(120)
-        self.wval=QLabel(str(self.wsl.value())); self.wval.setFixedWidth(22)
+        self.wsl.setInvertedAppearance(True)  # چون layout RTL شده، invert برای درست بودن
+        self.wsl.setFixedWidth(120)
+        self.wval.setText(str(self.wsl.value()))
         self.wsl.valueChanged.connect(lambda v:(self.wval.setText(str(v)),QSettings("MSRT","App").setValue("wpl",v)))
-        # LTR order: stretch | lang_lbl | combo | spacing | words_lbl | slider | val
-        # این یعنی lang و combo سمت چپ‌تر، slider کنارشون، stretch باعث میشه همه راست بمونن
+        self.words_lbl=QLabel(); self.words_lbl.setObjectName("words_lbl")
+        # زبان ویدیو
+        self.vid_lang_combo=QComboBox(); self.vid_lang_combo.setFixedHeight(34); self.vid_lang_combo.setFixedWidth(110)
+        self.lang_lbl=QLabel(); self.lang_lbl.setObjectName("lang_lbl")
+        # RTL order: راست→چپ: wval | slider | words_lbl | space | lang_lbl | combo | stretch
+        ctrl.addWidget(self.wval)
+        ctrl.addWidget(self.wsl)
+        ctrl.addWidget(self.words_lbl)
+        ctrl.addSpacing(24)
+        ctrl.addWidget(self.lang_lbl)
+        ctrl.addWidget(self.vid_lang_combo)
         ctrl.addStretch()
-        ctrl.addWidget(lang_lbl); ctrl.addWidget(self.vid_lang_combo)
-        ctrl.addSpacing(20)
-        ctrl.addWidget(words_lbl); ctrl.addWidget(self.wsl); ctrl.addWidget(self.wval)
         self.lay.addLayout(ctrl)
         # drop zone
         self.dz=DropZone(EXTS_VID); self.dz.file_dropped.connect(self.on_file); self.lay.addWidget(self.dz)
@@ -541,8 +553,9 @@ class ProcessPage(QWidget):
     def apply_theme(self):
         self.ttl.setText(T("process")); self.ttl.setStyleSheet(f"color:{t('text')}")
         self.bdg.setStyleSheet(f"color:{t('muted')};font-size:11px;background:{t('card')};border-radius:10px;padding:4px 10px")
-        lang_lbl=self.findChild(QLabel,"lang_lbl")
-        if lang_lbl: lang_lbl.setText(T("lang_select")); lang_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
+        self.info_btn.setStyleSheet(f"QPushButton{{background:{t('surface')};color:{t('accent2')};border:1px solid {t('border')};border-radius:8px;font-size:15px;font-weight:600;}}QPushButton:hover{{background:{t('card')};border-color:{t('accent2')}}}")
+        self.lang_lbl.setText(T("lang_select")); self.lang_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
+        self.words_lbl.setText(T("words_label")); self.words_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
         self.vid_lang_combo.blockSignals(True)
         cur=self.vid_lang_combo.currentData()
         self.vid_lang_combo.clear()
@@ -551,8 +564,6 @@ class ProcessPage(QWidget):
         if cur: self.vid_lang_combo.setCurrentIndex(self.vid_lang_combo.findData(cur))
         self.vid_lang_combo.blockSignals(False)
         self.vid_lang_combo.setStyleSheet(f"QComboBox{{background:{t('card')};color:{t('text')};border:1px solid {t('border')};border-radius:8px;padding:0 10px;font-size:12px;}}QComboBox::drop-down{{border:none;}}QComboBox QAbstractItemView{{background:{t('card')};color:{t('text')};border:1px solid {t('border')}}}")
-        words_lbl=self.findChild(QLabel,"words_lbl")
-        if words_lbl: words_lbl.setText(T("words_label")); words_lbl.setStyleSheet(f"color:{t('muted')};font-size:12px")
         self.wsl.setStyleSheet(f"QSlider::groove:horizontal{{height:5px;background:{t('surface')};border-radius:3px;}}QSlider::handle:horizontal{{width:16px;height:16px;margin:-5px 0;background:{t('accent')};border-radius:8px;}}QSlider::sub-page:horizontal{{background:{t('accent')};border-radius:3px;}}")
         self.wval.setStyleSheet(f"color:{t('accent')};font-size:13px;font-weight:700")
         self.bbtn.setText(T("browse")); _sb(self.bbtn)
@@ -565,17 +576,12 @@ class ProcessPage(QWidget):
         ts=f"background:transparent;border:none;color:{t('sub')};font-family:'Cascadia Code','Consolas',monospace;font-size:12px;padding:14px;"
         for w in [self.tab0,self.tab1,self.sr]: w.setStyleSheet(ts)
         self.clbl.setStyleSheet(f"color:{t('muted')};font-size:11px")
-        self.info_btn.setStyleSheet(f"QPushButton{{background:{t('surface')};color:{t('accent2')};border:1px solid {t('border')};border-radius:8px;font-size:15px;font-weight:600;}}QPushButton:hover{{background:{t('card')};border-color:{t('accent2')}}}")
         self.rfbtn.setText(T("refresh")); _sb(self.rfbtn)
         self.cpbtn.setText(T("copy")); _sb(self.cpbtn)
         self.nwbtn.setText(T("new_video")); _sb(self.nwbtn)
         dl_style=f"QPushButton{{background:{t('accent')};color:white;border-radius:9px;font-size:12px;font-weight:600;border:none;padding:0 14px;}}QPushButton:hover{{background:{t('accent2')}}}"
-        self.dlbtn_en.setText("دانلود SRT انگلیسی ⬇")
-        self.dlbtn_en.setStyleSheet(dl_style)
-        self.dlbtn_en.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
-        self.dlbtn_fa.setText("دانلود SRT فارسی ⬇")
-        self.dlbtn_fa.setStyleSheet(dl_style)
-        self.dlbtn_fa.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
+        self.dlbtn_en.setText("دانلود SRT انگلیسی"); self.dlbtn_en.setStyleSheet(dl_style)
+        self.dlbtn_fa.setText("دانلود SRT فارسی"); self.dlbtn_fa.setStyleSheet(dl_style)
         self.dz.set_hint(T("drop_hint"))
 
     def _update_tabs(self):
@@ -684,18 +690,26 @@ class SrtPage(QWidget):
 
     def _build(self):
         self.lay=QVBoxLayout(self); self.lay.setContentsMargins(28,24,28,24); self.lay.setSpacing(14)
-        self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold)); self.lay.addWidget(self.ttl)
-        # direction selector - راست چین
-        dir_row=QHBoxLayout(); dir_row.setSpacing(10)
+        # عنوان راست
+        hdr=QHBoxLayout()
+        self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold))
+        hdr.addStretch(); hdr.addWidget(self.ttl)
+        self.lay.addLayout(hdr)
+        # direction selector - راست‌چین با RTL layout
+        dir_row=QHBoxLayout()
+        dir_row.setDirection(QHBoxLayout.Direction.RightToLeft)
+        dir_row.setSpacing(10)
         self.dir_lbl=QLabel()
         self.en2fa_btn=QPushButton("انگلیسی  ←  فارسی"); self.en2fa_btn.setFixedHeight(34); self.en2fa_btn.setCheckable(True); self.en2fa_btn.setChecked(True)
         self.fa2en_btn=QPushButton("فارسی  ←  انگلیسی"); self.fa2en_btn.setFixedHeight(34); self.fa2en_btn.setCheckable(True)
         self.en2fa_btn.setCursor(Qt.CursorShape.PointingHandCursor); self.fa2en_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.en2fa_btn.clicked.connect(lambda:self._set_dir("en2fa"))
         self.fa2en_btn.clicked.connect(lambda:self._set_dir("fa2en"))
-        # راست: لیبل و دکمه‌ها، stretch چپ
+        # RTL: اول add = راست
+        dir_row.addWidget(self.dir_lbl)
+        dir_row.addWidget(self.en2fa_btn)
+        dir_row.addWidget(self.fa2en_btn)
         dir_row.addStretch()
-        dir_row.addWidget(self.fa2en_btn); dir_row.addWidget(self.en2fa_btn); dir_row.addSpacing(8); dir_row.addWidget(self.dir_lbl)
         self.lay.addLayout(dir_row)
         self.dz=DropZone(EXTS_SRT); self.dz.file_dropped.connect(self.on_file); self.lay.addWidget(self.dz)
         self.bbtn=mk(""); self.bbtn.clicked.connect(self.browse); self.lay.addWidget(self.bbtn)
@@ -801,16 +815,18 @@ class HistoryPage(QWidget):
         for i,rec in enumerate(recs):
             card=QFrame(); card.setStyleSheet(f"QFrame{{background:{t('card')};border-radius:12px;border:1px solid {t('border')}}}")
             cl=QHBoxLayout(card); cl.setContentsMargins(16,14,16,14); cl.setSpacing(12)
-            ob=mk(T("history_open"),h=34); segs=rec.get("segments",[])
-            ob.clicked.connect(lambda _,s=segs:self.open_segments.emit(s))
-            db=mk(T("history_delete"),danger=True,h=34); db.clicked.connect(lambda _,idx=i:self._del(idx))
+            # اطلاعات راست
             info=QVBoxLayout(); info.setSpacing(4)
             fn=QLabel(f"🎬  {rec.get('filename','—')}"); fn.setStyleSheet(f"color:{t('text')};font-size:13px;font-weight:600")
             dt=QLabel(f"{rec.get('date','')}  ·  {rec.get('sentences',0)} {T('sentences')}  ·  ~{rec.get('wh_tok',0)+rec.get('llm_tok',0):,} tokens")
             dt.setStyleSheet(f"color:{t('muted')};font-size:11px")
             info.addWidget(fn); info.addWidget(dt)
-            # دکمه‌ها راست، اطلاعات چپ
-            cl.addWidget(db); cl.addWidget(ob); cl.addStretch(); cl.addLayout(info)
+            # دکمه‌ها چپ
+            ob=mk(T("history_open"),h=34); segs=rec.get("segments",[])
+            ob.clicked.connect(lambda _,s=segs:self.open_segments.emit(s))
+            db=mk(T("history_delete"),danger=True,h=34); db.clicked.connect(lambda _,idx=i:self._del(idx))
+            # LTR: info(راست) | stretch | ob | db(چپ)
+            cl.addLayout(info); cl.addStretch(); cl.addWidget(ob); cl.addWidget(db)
             ilay.addWidget(card)
         ilay.addStretch(); scroll.setWidget(inner); self.lay.addWidget(scroll)
     def _del(self,idx): recs=load_history(); recs.pop(idx); save_history(recs); self._build()
@@ -854,13 +870,13 @@ class SettingsPage(QWidget):
         sb=mk(T("save"),primary=True,h=42); sb.clicked.connect(self._save); sl.addWidget(sb)
         self.slbl=QLabel(""); self.slbl.setStyleSheet(f"color:{t('success')};font-size:12px"); sl.addWidget(self.slbl)
         sl.addWidget(div())
-        # Token usage + refresh button
+        # Token usage + refresh button — راست‌چین
         tok_hdr=QHBoxLayout()
+        tok_hdr.setDirection(QHBoxLayout.Direction.RightToLeft)
         rfbtn=mk(T("tok_refresh"),h=32,w=120); rfbtn.clicked.connect(self._build)
         tok_title=H("📊  "+T("usage_label"),13,True)
         tok_title.setWordWrap(False)
-        tok_hdr.addWidget(rfbtn); tok_hdr.addStretch()
-        tok_hdr.addWidget(tok_title)
+        tok_hdr.addWidget(tok_title); tok_hdr.addStretch(); tok_hdr.addWidget(rfbtn)
         sl.addLayout(tok_hdr)
         wh,llm=today_usage()
         for label,used,total in [(T("whisper_tok"),wh,GROQ_DAILY["whisper"]),(T("llm_tok"),llm,GROQ_DAILY["llm"])]:
@@ -873,18 +889,22 @@ class SettingsPage(QWidget):
             col=t("danger") if pct>80 else t("accent")
             bar.setStyleSheet(f"QProgressBar{{background:{t('surface')};border-radius:3px;}}QProgressBar::chunk{{background:{col};border-radius:3px;}}"); sl.addWidget(bar)
         sl.addWidget(div())
-        # Theme
+        # Theme — راست‌چین
         sl.addWidget(H("🎨  "+T("theme_label"),13,True))
-        trow=QHBoxLayout(); trow.setSpacing(8)
+        trow=QHBoxLayout(); trow.setDirection(QHBoxLayout.Direction.RightToLeft); trow.setSpacing(8)
         self.dbtn=mk(T("dark_btn"),h=38,w=110); self.lbtn=mk(T("light_btn"),h=38,w=110)
         self.dbtn.clicked.connect(lambda:self._theme("dark")); self.lbtn.clicked.connect(lambda:self._theme("light"))
-        self._rtheme(); trow.addWidget(self.dbtn); trow.addWidget(self.lbtn); trow.addStretch(); sl.addLayout(trow); sl.addWidget(div())
-        # Language
+        self._rtheme()
+        trow.addWidget(self.dbtn); trow.addWidget(self.lbtn); trow.addStretch()
+        sl.addLayout(trow); sl.addWidget(div())
+        # Language — راست‌چین
         sl.addWidget(H("🌐  "+T("lang_label"),13,True))
-        lrow=QHBoxLayout(); lrow.setSpacing(8)
+        lrow=QHBoxLayout(); lrow.setDirection(QHBoxLayout.Direction.RightToLeft); lrow.setSpacing(8)
         self.fabtn=mk("🇮🇷  فارسی",h=38,w=130); self.enbtn=mk("🇺🇸  English",h=38,w=130)
         self.fabtn.clicked.connect(lambda:self._lang("fa")); self.enbtn.clicked.connect(lambda:self._lang("en"))
-        self._rlang(); lrow.addWidget(self.fabtn); lrow.addWidget(self.enbtn); lrow.addStretch(); sl.addLayout(lrow)
+        self._rlang()
+        lrow.addWidget(self.fabtn); lrow.addWidget(self.enbtn); lrow.addStretch()
+        sl.addLayout(lrow)
         sl.addStretch(); scroll.setWidget(w); self.lay.addWidget(scroll)
     def _rtheme(self):
         is_dark=CT is DARK
