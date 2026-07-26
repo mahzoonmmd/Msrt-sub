@@ -198,31 +198,43 @@ def today_usage():
 # WORKERS
 # ═══════════════════════════════════════════════════════════════════════════════
 def translate_batches(client, segments, src_lang="en"):
-    """Translate segments. If src_lang='fa', translate FA→EN. Otherwise EN→FA."""
-    for i in range(0,len(segments),60):
-        batch=segments[i:i+60]
+    for i in range(0,len(segments),50):
+        batch=segments[i:i+50]
         numbered="\n".join(f"[{j}] {s['text']}" for j,s in enumerate(batch))
         if src_lang=="fa":
-            prompt=("Translate each numbered Persian line to natural English.\n"
-                    "Output ONLY translated lines with numbering [0],[1],... — nothing else.\n\n"+numbered)
+            prompt=(
+                "You are a professional translator. Translate each numbered Persian subtitle line to natural English.\n"
+                "Rules:\n"
+                "- Output ONLY the translated lines with [N] numbering\n"
+                "- Keep it concise — these are subtitles, not essays\n"
+                "- No extra text, no explanations\n\n"
+                f"{numbered}"
+            )
         else:
             prompt=(
-                "Translate each numbered English subtitle line to natural, fluent Persian (Farsi).\n"
-                "Guidelines:\n"
-                "- Use everyday conversational Persian, not formal/literary\n"
-                "- Keep the same meaning and tone as the original\n"
-                "- For technical terms, use common Persian equivalents\n"
-                "- Do NOT transliterate English words into Persian letters — always translate\n"
-                "- Output ONLY the translated lines with numbering [0],[1],... — nothing else\n\n"
-                +numbered
+                "You are an expert Persian (Farsi) subtitle translator. "
+                "Translate each numbered English subtitle line to natural, fluent, everyday Persian.\n\n"
+                "STRICT RULES:\n"
+                "1. Output ONLY the Persian translations with [N] numbering — nothing else\n"
+                "2. Use natural spoken Persian, NOT formal or literary language\n"
+                "3. Do NOT transliterate English words into Persian script — always find the Persian equivalent\n"
+                "4. Keep translations SHORT and punchy — these are subtitles\n"
+                "5. Preserve the original meaning and tone exactly\n"
+                "6. For technical terms with no Persian equivalent, use the most common Persian approximation\n"
+                "7. Numbers and proper nouns can stay in their original form\n\n"
+                "EXAMPLES OF GOOD TRANSLATION:\n"
+                "[0] What's up? → [0] چی شده؟\n"
+                "[1] I don't think that's a good idea → [1] فکر نکنم ایده خوبی باشه\n"
+                "[2] Let's get started → [2] بزن بریم\n\n"
+                f"NOW TRANSLATE:\n{numbered}"
             )
         resp=client.chat.completions.create(
             model="llama-3.3-70b-versatile",
             messages=[
-                {"role":"system","content":"You are an expert subtitle translator. Output only numbered translations, no explanations, no extra text."},
+                {"role":"system","content":"You are a subtitle translator. Output ONLY numbered translations. Never add explanations."},
                 {"role":"user","content":prompt}
             ],
-            temperature=0.15, max_tokens=4096)
+            temperature=0.1, max_tokens=4096)
         fa_map={}
         for line in resp.choices[0].message.content.strip().split("\n"):
             m=re.match(r"\[(\d+)\]\s*(.*)",line.strip())
@@ -475,9 +487,8 @@ class ProcessPage(QWidget):
     def _build(self):
         self.lay=QVBoxLayout(self); self.lay.setContentsMargins(28,24,28,24); self.lay.setSpacing(14)
 
-        # ── Header: عنوان راست، badge و ⓘ چپ ──
-        hdr=QHBoxLayout()
-        hdr.setDirection(QHBoxLayout.Direction.RightToLeft)  # راست به چپ
+        # ── Header: با RTL app عنوان خودکار راست میره ──
+        hdr=QHBoxLayout(); hdr.setSpacing(8)
         self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold))
         self.bdg=QLabel("Groq Whisper Large v3  ·  LLaMA 3.3 70B")
         self.info_btn=QPushButton("ⓘ")
@@ -486,37 +497,30 @@ class ProcessPage(QWidget):
         self.info_btn.setFont(QFont("Segoe UI",14))
         self.info_btn.setToolTip("راهنما / Guide")
         self.info_btn.clicked.connect(self._show_guide)
-        # RTL: اول add = راست. پس ttl راست، بعد stretch، بعد bdg و info چپ
-        hdr.addWidget(self.ttl)
-        hdr.addStretch()
-        hdr.addWidget(self.bdg)
-        hdr.addSpacing(8)
-        hdr.addWidget(self.info_btn)
+        # RTL app: اول add = راست → ttl راست، stretch، bdg و info چپ
+        hdr.addWidget(self.ttl); hdr.addStretch()
+        hdr.addWidget(self.bdg); hdr.addSpacing(4); hdr.addWidget(self.info_btn)
         self.lay.addLayout(hdr)
 
-        # ── Controls: زبان ویدیو و اسلایدر — راست‌چین ──
-        ctrl=QHBoxLayout()
-        ctrl.setDirection(QHBoxLayout.Direction.RightToLeft)
-        ctrl.setSpacing(12)
-        # اسلایدر (در RTL اول add = سمت راست)
+        # ── Controls: RTL app کافیه، فقط slider باید LTR باشه ──
+        ctrl=QHBoxLayout(); ctrl.setSpacing(10)
         self.wval=QLabel("10"); self.wval.setFixedWidth(22)
         self.wsl=QSlider(Qt.Orientation.Horizontal); self.wsl.setRange(1,10)
         self.wsl.setValue(int(QSettings("MSRT","App").value("wpl",10)))
-        self.wsl.setInvertedAppearance(True)  # چون layout RTL شده، invert برای درست بودن
-        self.wsl.setFixedWidth(120)
+        self.wsl.setLayoutDirection(Qt.LayoutDirection.LeftToRight)  # slider همیشه LTR
+        self.wsl.setInvertedAppearance(False)
+        self.wsl.setFixedWidth(130)
         self.wval.setText(str(self.wsl.value()))
         self.wsl.valueChanged.connect(lambda v:(self.wval.setText(str(v)),QSettings("MSRT","App").setValue("wpl",v)))
         self.words_lbl=QLabel(); self.words_lbl.setObjectName("words_lbl")
-        # زبان ویدیو
         self.vid_lang_combo=QComboBox(); self.vid_lang_combo.setFixedHeight(34); self.vid_lang_combo.setFixedWidth(110)
+        self.vid_lang_combo.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
         self.lang_lbl=QLabel(); self.lang_lbl.setObjectName("lang_lbl")
-        # RTL order: راست→چپ: wval | slider | words_lbl | space | lang_lbl | combo | stretch
-        ctrl.addWidget(self.wval)
-        ctrl.addWidget(self.wsl)
-        ctrl.addWidget(self.words_lbl)
-        ctrl.addSpacing(24)
-        ctrl.addWidget(self.lang_lbl)
-        ctrl.addWidget(self.vid_lang_combo)
+        # RTL app: addWidget ترتیب راست→چپ
+        # راست: ttl_wval | wsl | words_lbl  |  فاصله  |  lang_lbl | combo | stretch(چپ)
+        ctrl.addWidget(self.wval); ctrl.addWidget(self.wsl); ctrl.addWidget(self.words_lbl)
+        ctrl.addSpacing(20)
+        ctrl.addWidget(self.lang_lbl); ctrl.addWidget(self.vid_lang_combo)
         ctrl.addStretch()
         self.lay.addLayout(ctrl)
         # drop zone
@@ -544,9 +548,10 @@ class ProcessPage(QWidget):
         self.nwbtn=mk("",h=36); self.nwbtn.clicked.connect(self.reset)
         self.dlbtn_en=mk("",h=36); self.dlbtn_en.clicked.connect(lambda:self.dl("en"))
         self.dlbtn_fa=mk("",primary=True,h=36); self.dlbtn_fa.clicked.connect(lambda:self.dl("fa"))
-        brow.addWidget(self.clbl); brow.addStretch()
-        brow.addWidget(self.rfbtn); brow.addWidget(self.cpbtn)
-        brow.addWidget(self.nwbtn); brow.addWidget(self.dlbtn_en); brow.addWidget(self.dlbtn_fa)
+        # RTL app: راست→چپ ← dlbtn_fa | dlbtn_en | nwbtn | cpbtn | rfbtn | stretch | clbl
+        brow.addWidget(self.dlbtn_fa); brow.addWidget(self.dlbtn_en)
+        brow.addWidget(self.nwbtn); brow.addWidget(self.cpbtn); brow.addWidget(self.rfbtn)
+        brow.addStretch(); brow.addWidget(self.clbl)
         rfl.addLayout(brow); self.lay.addWidget(self.rfrm); self.lay.addStretch()
         self.apply_theme()
 
@@ -1040,7 +1045,14 @@ class MainWindow(QMainWindow):
         for i,b in enumerate(self.navs): b.clicked.connect(lambda _,x=i:self._nav(x))
         sl.addStretch()
         self.vl=QLabel(T("ver")); self.vl.setContentsMargins(6,0,6,0); sl.addWidget(self.vl)
-        root.addWidget(self.stack); root.addWidget(self.sb)
+        # با RTL app: stack اول add میشه = سمت چپ، sidebar دوم = سمت راست
+        root.addWidget(self.stack)
+        root.addWidget(self.sb)
+        # Sidebar باید LTR باشه تا لوگو و متن درست نشون داده بشه
+        self.sb.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
+        # nav buttons هم LTR
+        for b in self.navs:
+            b.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self._nav(0); self.retheme()
 
     def _nav(self,idx):
