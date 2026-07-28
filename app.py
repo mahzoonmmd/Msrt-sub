@@ -846,17 +846,16 @@ class HistoryPage(QWidget):
         for i,rec in enumerate(recs):
             card=QFrame(); card.setStyleSheet(f"QFrame{{background:{t('card')};border-radius:12px;border:1px solid {t('border')}}}")
             cl=QHBoxLayout(card); cl.setContentsMargins(16,14,16,14); cl.setSpacing(12)
-            # اطلاعات راست
+            # با RTL app: اول addWidget = راست
             info=QVBoxLayout(); info.setSpacing(4)
             fn=QLabel(f"🎬  {rec.get('filename','—')}"); fn.setStyleSheet(f"color:{t('text')};font-size:13px;font-weight:600")
             dt=QLabel(f"{rec.get('date','')}  ·  {rec.get('sentences',0)} {T('sentences')}  ·  ~{rec.get('wh_tok',0)+rec.get('llm_tok',0):,} tokens")
             dt.setStyleSheet(f"color:{t('muted')};font-size:11px")
             info.addWidget(fn); info.addWidget(dt)
-            # دکمه‌ها چپ
             ob=mk(T("history_open"),h=34); segs=rec.get("segments",[])
             ob.clicked.connect(lambda _,s=segs:self.open_segments.emit(s))
             db=mk(T("history_delete"),danger=True,h=34); db.clicked.connect(lambda _,idx=i:self._del(idx))
-            # LTR: info(راست) | stretch | ob | db(چپ)
+            # RTL app: info(اول=راست) | stretch | ob | db(آخر=چپ)
             cl.addLayout(info); cl.addStretch(); cl.addWidget(ob); cl.addWidget(db)
             ilay.addWidget(card)
         ilay.addStretch(); scroll.setWidget(inner); self.lay.addWidget(scroll)
@@ -1071,12 +1070,12 @@ class MainWindow(QMainWindow):
         for i,b in enumerate(self.navs): b.clicked.connect(lambda _,x=i:self._nav(x))
         sl.addStretch()
         self.vl=QLabel(T("ver")); self.vl.setContentsMargins(6,0,6,0); sl.addWidget(self.vl)
-        # با RTL app: stack اول add میشه = سمت چپ، sidebar دوم = سمت راست
-        root.addWidget(self.stack)
+        # با RTL app: اول add = سمت چپ (RTL میکشه). پس sidebar رو اول، stack رو دوم اضافه میکنیم
+        # تا sidebar راست و stack چپ بشه
         root.addWidget(self.sb)
-        # Sidebar باید LTR باشه تا لوگو و متن درست نشون داده بشه
+        root.addWidget(self.stack)
+        # Sidebar باید LTR باشه
         self.sb.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
-        # nav buttons هم LTR
         for b in self.navs:
             b.setLayoutDirection(Qt.LayoutDirection.LeftToRight)
         self._nav(0); self.retheme()
@@ -1090,7 +1089,7 @@ class MainWindow(QMainWindow):
     def retheme(self):
         self.centralWidget().setStyleSheet(f"background:{t('bg')}")
         self.setStyleSheet(f"QMainWindow{{background:{t('bg')};}}QScrollBar:vertical{{background:{t('surface')};width:6px;border-radius:3px;}}QScrollBar::handle:vertical{{background:{t('scrollbar')};border-radius:3px;min-height:20px;}}QScrollBar::add-line:vertical,QScrollBar::sub-line:vertical{{height:0;}}")
-        self.sb.setStyleSheet(f"QFrame{{background:{t('surface')};border-left:1px solid {t('border')}}}")
+        self.sb.setStyleSheet(f"QFrame{{background:{t('surface')};border-right:1px solid {t('border')}}}")
         self.vl.setStyleSheet(f"color:{t('muted')};font-size:10px")
         if CT is DARK: self.brand_lbl.setStyleSheet("color:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #FFFFFF,stop:1 #C8C8D8);font-size:18px;font-weight:700;")
         else: self.brand_lbl.setStyleSheet("color:qlineargradient(x1:0,y1:0,x2:1,y2:0,stop:0 #5856D6,stop:1 #818CF8);font-size:18px;font-weight:700;")
@@ -1105,5 +1104,6 @@ class MainWindow(QMainWindow):
 if __name__=="__main__":
     app=QApplication(sys.argv)
     app.setFont(QFont("Segoe UI",11))
+    app.setLayoutDirection(Qt.LayoutDirection.RightToLeft)
     win=MainWindow(); win.show()
     sys.exit(app.exec())
