@@ -304,16 +304,17 @@ class VideoWorker(QThread):
 
 class SrtWorker(QThread):
     progress=pyqtSignal(int,str); finished=pyqtSignal(list); error=pyqtSignal(str)
-    def __init__(self,segs,groq_key):
-        super().__init__(); self.segs=segs; self.groq_key=groq_key
+    def __init__(self,segs,groq_key,src_lang="en"):
+        super().__init__(); self.segs=segs; self.groq_key=groq_key; self.src_lang=src_lang
     def run(self):
         try:
             client=Groq(api_key=self.groq_key)
             self.progress.emit(1,T("srt_step"))
-            self.segs=translate_batches(client,self.segs,src_lang="en")
+            self.segs=translate_batches(client,self.segs,src_lang=self.src_lang)
             self.progress.emit(2,T("srt_done"))
             self.finished.emit(self.segs)
-        except Exception as e: self.error.emit(str(e))
+        except Exception as e:
+            self.error.emit(str(e))
 
 # ═══════════════════════════════════════════════════════════════════════════════
 # UI HELPERS
@@ -392,84 +393,101 @@ class OnboardingDialog(QDialog):
     def __init__(self,parent=None):
         super().__init__(parent)
         self.setWindowTitle("MSRT")
-        self.setFixedSize(520,400)
+        self.setFixedSize(540,420)
         self.setWindowFlags(Qt.WindowType.Dialog|Qt.WindowType.FramelessWindowHint)
+        self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._page=0; self._build()
 
     def _build(self):
-        self.setStyleSheet(f"QDialog{{background:{t('card')};border-radius:16px;}}")
-        lay=QVBoxLayout(self); lay.setContentsMargins(44,36,44,28); lay.setSpacing(0)
+        # Outer container with shadow effect
+        outer=QVBoxLayout(self); outer.setContentsMargins(16,16,16,16)
+        self.card=QFrame()
+        self.card.setStyleSheet(f"""
+            QFrame {{
+                background:{t('card')};
+                border-radius:20px;
+                border:1px solid {t('border')};
+            }}
+        """)
+        # Shadow via extra frame behind
+        shadow_style=f"background:rgba(0,0,0,0.35);border-radius:22px;"
+        shadow=QFrame(self); shadow.setGeometry(18,18,504,388)
+        shadow.setStyleSheet(shadow_style); shadow.lower()
+
+        lay=QVBoxLayout(self.card); lay.setContentsMargins(44,36,44,28); lay.setSpacing(0)
+        outer.addWidget(self.card)
+
+        # Logo
         logo_path=resource_path("icon_256.png")
         if os.path.exists(logo_path):
-            logo=RoundedLogo(logo_path,60)
-            logo.setAlignment(Qt.AlignmentFlag.AlignCenter)
+            logo=RoundedLogo(logo_path,64)
             lay.addWidget(logo,alignment=Qt.AlignmentFlag.AlignCenter)
-        lay.addSpacing(16)
-        # Title — center
+        lay.addSpacing(14)
+
+        # Title — center, large, bold
         self.title_lbl=QLabel()
-        self.title_lbl.setFont(QFont("Segoe UI",20,QFont.Weight.Bold))
-        self.title_lbl.setStyleSheet(f"color:{t('text')}")
+        self.title_lbl.setFont(QFont("Segoe UI",21,QFont.Weight.Bold))
+        self.title_lbl.setStyleSheet(f"color:{t('text')};background:transparent;border:none;")
         self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
         lay.addWidget(self.title_lbl)
-        lay.addSpacing(16)
-        # Body — بدون کادر، متن بزرگتر، RTL
+        lay.addSpacing(14)
+
+        # Body — RTL HTML, no border/box
         self.body_lbl=QTextEdit()
         self.body_lbl.setReadOnly(True)
-        self.body_lbl.setFixedHeight(115)
-        self.body_lbl.setFont(QFont("Segoe UI",13))
-        self.body_lbl.setStyleSheet(f"QTextEdit{{background:transparent;border:none;color:{t('sub')};padding:0;margin:0;}}")
+        self.body_lbl.setFixedHeight(110)
+        self.body_lbl.setFont(QFont("Tahoma",12))
+        self.body_lbl.setStyleSheet("QTextEdit{background:transparent;border:none;padding:0;margin:0;}")
         self.body_lbl.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         self.body_lbl.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
         lay.addWidget(self.body_lbl)
-        lay.addSpacing(12)
+        lay.addSpacing(10)
+
+        # API key button
         self.link_btn=QPushButton()
-        self.link_btn.setFixedHeight(42)
-        self.link_btn.setFont(QFont("Segoe UI",13,QFont.Weight.Medium))
+        self.link_btn.setFixedHeight(44)
+        self.link_btn.setFont(QFont("Tahoma",12,QFont.Weight.Medium))
         self.link_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.link_btn.setStyleSheet(f"QPushButton{{background:transparent;color:{t('accent2')};border:1.5px solid {t('accent2')};border-radius:9px;}}QPushButton:hover{{background:rgba(99,102,241,0.08)}}")
+        self.link_btn.setStyleSheet(f"QPushButton{{background:transparent;color:{t('accent2')};border:1.5px solid {t('accent2')};border-radius:10px;}}QPushButton:hover{{background:rgba(99,102,241,0.08)}}")
         self.link_btn.clicked.connect(lambda:webbrowser.open("https://console.groq.com"))
         lay.addWidget(self.link_btn)
         lay.addStretch()
-        # bottom row: skip | dots (center) | next
+
+        # Bottom: skip | dots | next
         brow=QHBoxLayout(); brow.setSpacing(10)
         self.skip_btn=QPushButton(T("ob_skip")); self.skip_btn.setFixedHeight(36)
         self.skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.skip_btn.setFont(QFont("Segoe UI",12))
+        self.skip_btn.setFont(QFont("Tahoma",11))
         self.skip_btn.setStyleSheet(f"QPushButton{{background:transparent;color:{t('muted')};border:none;}}QPushButton:hover{{color:{t('text')}}}")
         self.skip_btn.clicked.connect(self.accept)
-        self.next_btn=QPushButton(); self.next_btn.setFixedHeight(42); self.next_btn.setFixedWidth(140)
+        self.next_btn=QPushButton(); self.next_btn.setFixedHeight(44); self.next_btn.setFixedWidth(150)
         self.next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.next_btn.setFont(QFont("Segoe UI",13,QFont.Weight.Bold))
-        self.next_btn.setStyleSheet(f"QPushButton{{background:{t('accent')};color:white;border-radius:9px;font-weight:600;border:none;}}QPushButton:hover{{background:{t('accent2')}}}")
+        self.next_btn.setFont(QFont("Tahoma",12,QFont.Weight.Bold))
+        self.next_btn.setStyleSheet(f"QPushButton{{background:{t('accent')};color:white;border-radius:10px;border:none;}}QPushButton:hover{{background:{t('accent2')}}}")
         self.next_btn.clicked.connect(self._next)
-        # dots وسط
-        dot_widget=QWidget(); dot_lay=QHBoxLayout(dot_widget); dot_lay.setContentsMargins(0,0,0,0); dot_lay.setSpacing(6)
+        dot_w=QWidget(); dot_l=QHBoxLayout(dot_w); dot_l.setContentsMargins(0,0,0,0); dot_l.setSpacing(8)
         self.dots=[QLabel("●") for _ in range(3)]
-        for d in self.dots: dot_lay.addWidget(d)
+        for d in self.dots: dot_l.addWidget(d)
         brow.addWidget(self.skip_btn); brow.addStretch()
-        brow.addWidget(dot_widget)
-        brow.addStretch(); brow.addWidget(self.next_btn)
+        brow.addWidget(dot_w); brow.addStretch(); brow.addWidget(self.next_btn)
         lay.addLayout(brow)
         self._refresh()
 
     def _refresh(self):
         pages=[("ob_title1","ob_body1",True),("ob_title2","ob_body2",False),("ob_title3","ob_body3",False)]
         title_k,body_k,show_link=pages[self._page]
-        # Title: always center
         self.title_lbl.setText(T(title_k))
-        self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
-        # Body: use HTML with dir=rtl so mixed Farsi/English renders correctly
         body_text=T(body_k).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\n","<br>")
         self.body_lbl.setHtml(
-            f'<div dir="rtl" style="font-family:\'Segoe UI\',Tahoma,sans-serif;'
+            f'<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;'
             f'font-size:13px;color:{t("sub")};text-align:right;'
-            f'line-height:2;direction:rtl;unicode-bidi:embed">'
+            f'line-height:1.9;direction:rtl;">'
             f'{body_text}</div>'
         )
         self.link_btn.setText(T("ob_get_key")); self.link_btn.setVisible(show_link)
         self.next_btn.setText(T("ob_done") if self._page==2 else T("ob_next"))
         for i,d in enumerate(self.dots):
-            d.setStyleSheet(f"color:{t('accent') if i==self._page else t('border')};font-size:10px")
+            d.setStyleSheet(f"color:{t('accent') if i==self._page else t('border')};font-size:12px")
 
     def _next(self):
         if self._page<2: self._page+=1; self._refresh()
@@ -630,9 +648,11 @@ class ProcessPage(QWidget):
 
     def copy(self):
         w=self.tabs.currentWidget()
-        if isinstance(w,QTextEdit):
-            QApplication.clipboard().setText(w.toPlainText()); self.cpbtn.setText(T("copied"))
-            QTimer.singleShot(1500,lambda:self.cpbtn.setText(T("copy")))
+        if not isinstance(w,QTextEdit): return
+        raw=w.toPlainText()
+        # Remove [HH:MM:SS,mmm]  timestamps from each line
+        clean="\n".join(re.sub(r'^\[\d{2}:\d{2}:\d{2},\d{3}\]\s*','',line) for line in raw.split('\n'))
+        QApplication.clipboard().setText(clean.strip())
 
     def browse(self):
         p,_=QFileDialog.getOpenFileName(self,"","","Video (*.mp4 *.mov *.mkv *.avi *.webm)")
@@ -782,7 +802,13 @@ class SrtPage(QWidget):
         if self.banner: self.lay.removeWidget(self.banner); self.banner.deleteLater()
         self.banner=SuccessBanner(T("srt_done"))
         self.lay.insertWidget(self.lay.indexOf(self.rfrm),self.banner)
-        self.rfrm.show(); self.out_txt.setPlainText(to_srt(segs,fa=True))
+        self.rfrm.show()
+        # en2fa: output Persian SRT (fa=True), fa2en: output English translation (fa field has EN)
+        if self._direction=="en2fa":
+            self.out_txt.setPlainText(to_srt(segs,fa=True))
+        else:
+            # fa→en: text=original FA, fa=EN translation → output EN
+            self.out_txt.setPlainText(to_srt(segs,fa=True))
         self.apply_theme()
 
     def on_err(self,msg):
