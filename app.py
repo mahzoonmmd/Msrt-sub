@@ -72,12 +72,12 @@ UI = {
     whisper_tok="Whisper", llm_tok="LLM", ver="v1.1  —  رایگان",
     # onboarding
     ob_title1="به MSRT خوش آمدید 👋",
-    ob_body1="MSRT زیرنویس ویدیوهای شما رو با هوش مصنوعی استخراج و به فارسی ترجمه می‌کنه.\n\nقبل از شروع، به یک API Key رایگان از Groq نیاز داری.",
-    ob_get_key="🔑  دریافت API Key رایگان",
-    ob_title2="API Key رو وارد کن",
-    ob_body2="بعد از ثبت‌نام در Groq، API Key رو کپی کن و:\n\n۱. از منوی راست روی ⚙️ تنظیمات کلیک کن\n۲. کلید رو در بخش «Groq API Key» وارد کن\n۳. دکمه ذخیره رو بزن",
+    ob_body1="این برنامه زیرنویس ویدیوهای شما رو با هوش مصنوعی استخراج و به فارسی ترجمه می‌کنه.\n\nبرای شروع، به یک کلید رایگان از سرویس گروک نیاز داری.",
+    ob_get_key="🔑  دریافت کلید رایگان از گروک",
+    ob_title2="کلید را وارد کن",
+    ob_body2="بعد از ثبت‌نام در گروک، کلید رو کپی کن و:\n\n۱. از منوی سمت راست روی تنظیمات کلیک کن\n۲. کلید رو در بخش مربوطه وارد کن\n۳. دکمه ذخیره رو بزن",
     ob_title3="آماده‌ای! 🎉",
-    ob_body3="حالا ویدیوت رو به صفحه «پردازش ویدیو» بنداز یا از دکمه «انتخاب فایل» استفاده کن.\n\n⚠️ مهم: به دلیل تحریم‌ها، قبل از هر بار پردازش حتماً فیلترشکن رو روشن کن. بدون فیلترشکن درخواست به Groq نمی‌رسه و خطا میده.",
+    ob_body3="ویدیوت رو به صفحه «پردازش ویدیو» بنداز یا از دکمه «انتخاب فایل» استفاده کن.\n\n⚠️ مهم: به دلیل تحریم‌ها، قبل از هر پردازش فیلترشکن رو روشن کن.",
     ob_next="بعدی ←", ob_done="شروع کن!",
     ob_skip="رد کردن",
 ),
@@ -393,54 +393,55 @@ class OnboardingDialog(QDialog):
     def __init__(self,parent=None):
         super().__init__(parent)
         self.setWindowTitle("MSRT")
-        self.setFixedSize(540,420)
+        self.setFixedSize(500,450)
         self.setWindowFlags(Qt.WindowType.Dialog|Qt.WindowType.FramelessWindowHint)
         self.setAttribute(Qt.WidgetAttribute.WA_TranslucentBackground)
         self._page=0; self._build()
 
     def _build(self):
-        # Outer container with shadow effect
-        outer=QVBoxLayout(self); outer.setContentsMargins(16,16,16,16)
-        self.card=QFrame()
-        self.card.setStyleSheet(f"""
-            QFrame {{
-                background:{t('card')};
-                border-radius:20px;
-                border:1px solid {t('border')};
-            }}
-        """)
-        # Shadow via extra frame behind
-        shadow_style=f"background:rgba(0,0,0,0.35);border-radius:22px;"
-        shadow=QFrame(self); shadow.setGeometry(18,18,504,388)
-        shadow.setStyleSheet(shadow_style); shadow.lower()
+        from PyQt6.QtWidgets import QTextBrowser
+        # Dialog = transparent bg for shadow effect
+        self.setStyleSheet("QDialog{background:transparent;}")
+        outer=QVBoxLayout(self); outer.setContentsMargins(12,12,12,12); outer.setSpacing(0)
 
-        lay=QVBoxLayout(self.card); lay.setContentsMargins(44,36,44,28); lay.setSpacing(0)
+        # Card with visible border as shadow substitute
+        self.card=QFrame(); self.card.setObjectName("card")
+        is_dark=CT is DARK
+        self.card.setStyleSheet(
+            f"QFrame#card{{background:{t('card')};border-radius:20px;"
+            f"border:1px solid {t('border')};}}"
+        )
+        # Paint shadow manually
         outer.addWidget(self.card)
+        lay=QVBoxLayout(self.card); lay.setContentsMargins(36,28,36,24); lay.setSpacing(0)
 
         # Logo
         logo_path=resource_path("icon_256.png")
         if os.path.exists(logo_path):
             logo=RoundedLogo(logo_path,64)
             lay.addWidget(logo,alignment=Qt.AlignmentFlag.AlignCenter)
-        lay.addSpacing(14)
+        lay.addSpacing(12)
 
-        # Title — center, large, bold
+        # Title: center, large, bold, no background
         self.title_lbl=QLabel()
-        self.title_lbl.setFont(QFont("Segoe UI",21,QFont.Weight.Bold))
+        self.title_lbl.setFont(QFont("Tahoma",18,QFont.Weight.Bold))
         self.title_lbl.setStyleSheet(f"color:{t('text')};background:transparent;border:none;")
         self.title_lbl.setAlignment(Qt.AlignmentFlag.AlignCenter)
+        self.title_lbl.setWordWrap(True)
         lay.addWidget(self.title_lbl)
-        lay.addSpacing(14)
+        lay.addSpacing(12)
 
-        # Body — RTL HTML, no border/box
-        self.body_lbl=QTextEdit()
-        self.body_lbl.setReadOnly(True)
-        self.body_lbl.setFixedHeight(110)
-        self.body_lbl.setFont(QFont("Tahoma",12))
-        self.body_lbl.setStyleSheet("QTextEdit{background:transparent;border:none;padding:0;margin:0;}")
-        self.body_lbl.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        self.body_lbl.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
-        lay.addWidget(self.body_lbl)
+        # Body: QTextBrowser for correct bidirectional HTML rendering
+        self.body_browser=QTextBrowser()
+        self.body_browser.setOpenExternalLinks(False)
+        self.body_browser.setFixedHeight(100)
+        self.body_browser.setStyleSheet(
+            f"QTextBrowser{{background:transparent;border:none;color:{t('sub')};"
+            f"font-family:Tahoma;font-size:13px;padding:0;margin:0;}}"
+        )
+        self.body_browser.setVerticalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        self.body_browser.setHorizontalScrollBarPolicy(Qt.ScrollBarPolicy.ScrollBarAlwaysOff)
+        lay.addWidget(self.body_browser)
         lay.addSpacing(10)
 
         # API key button
@@ -448,24 +449,37 @@ class OnboardingDialog(QDialog):
         self.link_btn.setFixedHeight(44)
         self.link_btn.setFont(QFont("Tahoma",12,QFont.Weight.Medium))
         self.link_btn.setCursor(Qt.CursorShape.PointingHandCursor)
-        self.link_btn.setStyleSheet(f"QPushButton{{background:transparent;color:{t('accent2')};border:1.5px solid {t('accent2')};border-radius:10px;}}QPushButton:hover{{background:rgba(99,102,241,0.08)}}")
+        self.link_btn.setStyleSheet(
+            f"QPushButton{{background:transparent;color:{t('accent2')};border:2px solid {t('accent2')};"
+            f"border-radius:10px;padding:0 16px;}}QPushButton:hover{{background:rgba(99,102,241,0.1)}}"
+        )
         self.link_btn.clicked.connect(lambda:webbrowser.open("https://console.groq.com"))
         lay.addWidget(self.link_btn)
         lay.addStretch()
 
-        # Bottom: skip | dots | next
-        brow=QHBoxLayout(); brow.setSpacing(10)
-        self.skip_btn=QPushButton(T("ob_skip")); self.skip_btn.setFixedHeight(36)
+        # Bottom: skip | dots | next — use LTR for correct order
+        brow=QHBoxLayout(); brow.setSpacing(8)
+        brow.setDirection(QHBoxLayout.Direction.LeftToRight)
+        self.skip_btn=QPushButton(T("ob_skip"))
+        self.skip_btn.setFixedHeight(36)
         self.skip_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.skip_btn.setFont(QFont("Tahoma",11))
-        self.skip_btn.setStyleSheet(f"QPushButton{{background:transparent;color:{t('muted')};border:none;}}QPushButton:hover{{color:{t('text')}}}")
+        self.skip_btn.setStyleSheet(
+            f"QPushButton{{background:transparent;color:{t('muted')};border:none;padding:0 8px;}}"
+            f"QPushButton:hover{{color:{t('text')}}}"
+        )
         self.skip_btn.clicked.connect(self.accept)
-        self.next_btn=QPushButton(); self.next_btn.setFixedHeight(44); self.next_btn.setFixedWidth(150)
+        self.next_btn=QPushButton()
+        self.next_btn.setFixedHeight(44); self.next_btn.setFixedWidth(140)
         self.next_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.next_btn.setFont(QFont("Tahoma",12,QFont.Weight.Bold))
-        self.next_btn.setStyleSheet(f"QPushButton{{background:{t('accent')};color:white;border-radius:10px;border:none;}}QPushButton:hover{{background:{t('accent2')}}}")
+        self.next_btn.setStyleSheet(
+            f"QPushButton{{background:{t('accent')};color:white;border-radius:10px;border:none;}}"
+            f"QPushButton:hover{{background:{t('accent2')}}}"
+        )
         self.next_btn.clicked.connect(self._next)
-        dot_w=QWidget(); dot_l=QHBoxLayout(dot_w); dot_l.setContentsMargins(0,0,0,0); dot_l.setSpacing(8)
+        dot_w=QWidget(); dot_l=QHBoxLayout(dot_w)
+        dot_l.setContentsMargins(0,0,0,0); dot_l.setSpacing(8)
         self.dots=[QLabel("●") for _ in range(3)]
         for d in self.dots: dot_l.addWidget(d)
         brow.addWidget(self.skip_btn); brow.addStretch()
@@ -474,20 +488,30 @@ class OnboardingDialog(QDialog):
         self._refresh()
 
     def _refresh(self):
-        pages=[("ob_title1","ob_body1",True),("ob_title2","ob_body2",False),("ob_title3","ob_body3",False)]
+        pages=[
+            ("ob_title1","ob_body1",True),
+            ("ob_title2","ob_body2",False),
+            ("ob_title3","ob_body3",False),
+        ]
         title_k,body_k,show_link=pages[self._page]
         self.title_lbl.setText(T(title_k))
-        body_text=T(body_k).replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\n","<br>")
-        self.body_lbl.setHtml(
-            f'<div dir="rtl" style="font-family:Tahoma,Arial,sans-serif;'
-            f'font-size:13px;color:{t("sub")};text-align:right;'
-            f'line-height:1.9;direction:rtl;">'
-            f'{body_text}</div>'
+        # Use HTML for proper RTL rendering of mixed Farsi/English
+        body_raw=T(body_k)
+        body_html=body_raw.replace("&","&amp;").replace("<","&lt;").replace(">","&gt;").replace("\n","<br>")
+        self.body_browser.setHtml(
+            f'<html><body style="margin:0;padding:0;">'
+            f'<p dir="rtl" style="font-family:Tahoma,Arial;font-size:13px;'
+            f'color:{t("sub")};text-align:right;line-height:1.8;direction:rtl;">'
+            f'{body_html}</p></body></html>'
         )
-        self.link_btn.setText(T("ob_get_key")); self.link_btn.setVisible(show_link)
+        self.link_btn.setText(T("ob_get_key"))
+        self.link_btn.setVisible(show_link)
         self.next_btn.setText(T("ob_done") if self._page==2 else T("ob_next"))
         for i,d in enumerate(self.dots):
-            d.setStyleSheet(f"color:{t('accent') if i==self._page else t('border')};font-size:12px")
+            d.setStyleSheet(
+                f"color:{t('accent') if i==self._page else t('border')};"
+                f"font-size:12px;background:transparent;border:none;"
+            )
 
     def _next(self):
         if self._page<2: self._page+=1; self._refresh()
@@ -715,22 +739,23 @@ class SrtPage(QWidget):
 
     def _build(self):
         self.lay=QVBoxLayout(self); self.lay.setContentsMargins(28,24,28,24); self.lay.setSpacing(14)
-        # عنوان راست
-        hdr=QHBoxLayout()
+
+        # عنوان — با RTL app خودکار راست میره
         self.ttl=QLabel(); self.ttl.setFont(QFont("Segoe UI",17,QFont.Weight.Bold))
-        hdr.addStretch(); hdr.addWidget(self.ttl)
-        self.lay.addLayout(hdr)
-        # direction selector - راست‌چین با RTL layout
-        dir_row=QHBoxLayout()
-        dir_row.setDirection(QHBoxLayout.Direction.RightToLeft)
-        dir_row.setSpacing(10)
+        self.lay.addWidget(self.ttl)
+
+        # جهت ترجمه — با RTL app دکمه‌ها راست هستن
+        dir_row=QHBoxLayout(); dir_row.setSpacing(10)
         self.dir_lbl=QLabel()
-        self.en2fa_btn=QPushButton("انگلیسی  ←  فارسی"); self.en2fa_btn.setFixedHeight(34); self.en2fa_btn.setCheckable(True); self.en2fa_btn.setChecked(True)
-        self.fa2en_btn=QPushButton("فارسی  ←  انگلیسی"); self.fa2en_btn.setFixedHeight(34); self.fa2en_btn.setCheckable(True)
-        self.en2fa_btn.setCursor(Qt.CursorShape.PointingHandCursor); self.fa2en_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.en2fa_btn=QPushButton("انگلیسی  ←  فارسی")
+        self.en2fa_btn.setFixedHeight(34); self.en2fa_btn.setCheckable(True); self.en2fa_btn.setChecked(True)
+        self.fa2en_btn=QPushButton("فارسی  ←  انگلیسی")
+        self.fa2en_btn.setFixedHeight(34); self.fa2en_btn.setCheckable(True)
+        self.en2fa_btn.setCursor(Qt.CursorShape.PointingHandCursor)
+        self.fa2en_btn.setCursor(Qt.CursorShape.PointingHandCursor)
         self.en2fa_btn.clicked.connect(lambda:self._set_dir("en2fa"))
         self.fa2en_btn.clicked.connect(lambda:self._set_dir("fa2en"))
-        # RTL: اول add = راست
+        # RTL app: اول add = راست
         dir_row.addWidget(self.dir_lbl)
         dir_row.addWidget(self.en2fa_btn)
         dir_row.addWidget(self.fa2en_btn)
@@ -749,7 +774,8 @@ class SrtPage(QWidget):
         brow=QHBoxLayout(); brow.setContentsMargins(14,10,14,14); brow.setSpacing(8)
         self.nwbtn=mk("",h=36); self.nwbtn.clicked.connect(self.reset)
         self.dlbtn=mk("",primary=True,h=36); self.dlbtn.clicked.connect(self.dl)
-        brow.addStretch(); brow.addWidget(self.nwbtn); brow.addWidget(self.dlbtn)
+        # RTL app: addWidget اول = راست. dlbtn(آبی) راست، nwbtn کنارش، stretch چپ
+        brow.addWidget(self.dlbtn); brow.addWidget(self.nwbtn); brow.addStretch()
         rfl.addLayout(brow); self.lay.addWidget(self.rfrm); self.lay.addStretch()
         self.apply_theme()
 
@@ -900,18 +926,17 @@ class SettingsPage(QWidget):
         sb=mk(T("save"),primary=True,h=42); sb.clicked.connect(self._save); sl.addWidget(sb)
         self.slbl=QLabel(""); self.slbl.setStyleSheet(f"color:{t('success')};font-size:12px"); sl.addWidget(self.slbl)
         sl.addWidget(div())
-        # Token usage + refresh button — راست‌چین
-        tok_hdr=QHBoxLayout()
-        tok_hdr.setDirection(QHBoxLayout.Direction.RightToLeft)
+        # Token usage + refresh — با RTL app عنوان راست، دکمه چپ
+        tok_hdr=QHBoxLayout(); tok_hdr.setSpacing(10)
         rfbtn=mk(T("tok_refresh"),h=32,w=120); rfbtn.clicked.connect(self._build)
-        tok_title=H("📊  "+T("usage_label"),13,True)
-        tok_title.setWordWrap(False)
-        tok_hdr.addWidget(tok_title); tok_hdr.addStretch(); tok_hdr.addWidget(rfbtn)
+        tok_hdr.addWidget(rfbtn)  # چپ
+        tok_hdr.addStretch()
+        tok_hdr.addWidget(H("📊  "+T("usage_label"),13,True))  # راست
         sl.addLayout(tok_hdr)
         wh,llm=today_usage()
         for label,used,total in [(T("whisper_tok"),wh,GROQ_DAILY["whisper"]),(T("llm_tok"),llm,GROQ_DAILY["llm"])]:
             pct=min(int(used/total*100),100) if total>0 else 0
-            rl=QLabel(f"{used:,} / {total:,}  ({pct}%)  :{label}")
+            rl=QLabel(f"{label}: {used:,} / {total:,}  ({pct}%)")
             rl.setStyleSheet(f"color:{t('sub')};font-size:12px")
             rl.setAlignment(Qt.AlignmentFlag.AlignRight)
             sl.addWidget(rl)
@@ -919,17 +944,17 @@ class SettingsPage(QWidget):
             col=t("danger") if pct>80 else t("accent")
             bar.setStyleSheet(f"QProgressBar{{background:{t('surface')};border-radius:3px;}}QProgressBar::chunk{{background:{col};border-radius:3px;}}"); sl.addWidget(bar)
         sl.addWidget(div())
-        # Theme — راست‌چین
+        # Theme — با RTL app دکمه‌ها خودکار راست هستن
         sl.addWidget(H("🎨  "+T("theme_label"),13,True))
-        trow=QHBoxLayout(); trow.setDirection(QHBoxLayout.Direction.RightToLeft); trow.setSpacing(8)
+        trow=QHBoxLayout(); trow.setSpacing(8)
         self.dbtn=mk(T("dark_btn"),h=38,w=110); self.lbtn=mk(T("light_btn"),h=38,w=110)
         self.dbtn.clicked.connect(lambda:self._theme("dark")); self.lbtn.clicked.connect(lambda:self._theme("light"))
         self._rtheme()
         trow.addWidget(self.dbtn); trow.addWidget(self.lbtn); trow.addStretch()
         sl.addLayout(trow); sl.addWidget(div())
-        # Language — راست‌چین
+        # Language — با RTL app دکمه‌ها خودکار راست هستن
         sl.addWidget(H("🌐  "+T("lang_label"),13,True))
-        lrow=QHBoxLayout(); lrow.setDirection(QHBoxLayout.Direction.RightToLeft); lrow.setSpacing(8)
+        lrow=QHBoxLayout(); lrow.setSpacing(8)
         self.fabtn=mk("🇮🇷  فارسی",h=38,w=130); self.enbtn=mk("🇺🇸  English",h=38,w=130)
         self.fabtn.clicked.connect(lambda:self._lang("fa")); self.enbtn.clicked.connect(lambda:self._lang("en"))
         self._rlang()
