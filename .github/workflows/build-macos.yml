@@ -5,13 +5,16 @@ name: build-macos
 # hardware available — this workflow is the only way to get a build
 # that has actually run on macOS rather than just being cross-platform
 # "by inspection". It runs on every push/PR that touches app code, and
-# uploads the .app/.dmg as a downloadable artifact; pushing a tag like
-# `v1.1-macos` additionally attaches the .dmg to a GitHub Release.
+# uploads the .app/.dmg as a downloadable artifact; pushing (or
+# creating, from the GitHub Releases UI) any tag attaches the .dmg to
+# that tag's Release. You can also just click "Run workflow" below
+# (Actions tab) any time, with no tag involved, and download the
+# MSRT-macos artifact from that run once it finishes.
 
 on:
   push:
     branches: [main]
-    tags: ["v*-macos"]
+    tags: ["*"]
     paths:
       - "app/**"
       - "ui/**"
@@ -107,7 +110,7 @@ jobs:
           retention-days: 30
 
       - name: Attach .dmg to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/')
         uses: softprops/action-gh-release@v2
         with:
           files: dist/MSRT.dmg
