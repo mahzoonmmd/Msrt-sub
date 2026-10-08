@@ -36,6 +36,10 @@ on:
 jobs:
   build:
     runs-on: macos-14   # Apple Silicon (arm64) hosted runner
+    permissions:
+      contents: write   # needed for the "Attach .dmg to GitHub Release" step to
+                         # create/update a release on a tag push (the default
+                         # GITHUB_TOKEN is read-only unless granted this)
     steps:
       - uses: actions/checkout@v4
 
