@@ -31,7 +31,12 @@ on:
       - "build_macos.py"
       - "requirements.txt"
       - "resources/**"
-  workflow_dispatch: {}
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Existing release tag to attach the built .dmg to (optional - leave blank to just build)"
+        required: false
+        default: ""
 
 jobs:
   build:
@@ -128,7 +133,8 @@ jobs:
           retention-days: 30
 
       - name: Attach .dmg to GitHub Release
-        if: startsWith(github.ref, 'refs/tags/')
+        if: startsWith(github.ref, 'refs/tags/') || github.event.inputs.release_tag != ''
         uses: softprops/action-gh-release@v2
         with:
+          tag_name: ${{ github.event.inputs.release_tag || github.ref_name }}
           files: dist/MSRT.dmg
