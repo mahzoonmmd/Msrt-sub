@@ -1,0 +1,113 @@
+name: build-macos
+
+# Builds and smoke-tests the real macOS app on a hosted Apple-silicon
+# runner. This exists because development happens without any Mac
+# hardware available — this workflow is the only way to get a build
+# that has actually run on macOS rather than just being cross-platform
+# "by inspection". It runs on every push/PR that touches app code, and
+# uploads the .app/.dmg as a downloadable artifact; pushing a tag like
+# `v1.1-macos` additionally attaches the .dmg to a GitHub Release.
+
+on:
+  push:
+    branches: [main]
+    tags: ["v*-macos"]
+    paths:
+      - "app/**"
+      - "ui/**"
+      - "main.py"
+      - "build_macos.py"
+      - "requirements.txt"
+      - "resources/**"
+      - ".github/workflows/build-macos.yml"
+  pull_request:
+    paths:
+      - "app/**"
+      - "ui/**"
+      - "main.py"
+      - "build_macos.py"
+      - "requirements.txt"
+      - "resources/**"
+  workflow_dispatch: {}
+
+jobs:
+  build:
+    runs-on: macos-14   # Apple Silicon (arm64) hosted runner
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Install Python dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install -r requirements.txt
+
+      - name: Install ffmpeg via Homebrew and vendor the binaries
+        run: |
+          brew install ffmpeg
+          cp "$(brew --prefix ffmpeg)/bin/ffmpeg" resources/ffmpeg
+          cp "$(brew --prefix ffmpeg)/bin/ffprobe" resources/ffprobe
+          chmod +x resources/ffmpeg resources/ffprobe
+          # Sanity check they actually run before spending time on a full build.
+          resources/ffmpeg -version
+          resources/ffprobe -version
+
+      - name: Generate icon.icns if missing
+        run: |
+          if [ ! -f resources/icon.icns ]; then
+            python scripts/make_icns.py
+          fi
+
+      - name: Headless import / smoke test
+        run: |
+          # No display on the runner, and no real video/API access either —
+          # this is the same kind of smoke test used during development:
+          # confirm every module imports cleanly and core data-model logic
+          # (SRT parsing/generation, word re-chunking) behaves correctly,
+          # using the offscreen Qt platform plugin.
+          QT_QPA_PLATFORM=offscreen python -c "
+          import app.config, app.srt_utils, app.history, app.i18n, app.ffmpeg_utils, app.gemini_client, app.workers
+          import ui.main_window
+          from app.srt_utils import Segment, segments_to_srt, parse_srt, rechunk_by_words
+          segs = [Segment(0.0, 2.0, 'hello world this is a test'), Segment(2.0, 4.0, 'of the macOS build pipeline')]
+          srt = segments_to_srt(segs)
+          assert '-->' in srt
+          back = parse_srt(srt)
+          assert len(back) == len(segs)
+          flowed = rechunk_by_words(segs, 3)
+          assert len(flowed) > 0
+          print('Smoke test OK:', len(srt), 'chars of SRT generated and re-parsed')
+          "
+
+      - name: Build MSRT.app and MSRT.dmg
+        run: python build_macos.py
+
+      - name: Verify the .app bundle actually launches headlessly
+        run: |
+          QT_QPA_PLATFORM=offscreen open -W -n -a "dist/MSRT.app" --args --smoke-test &
+          APP_PID=$!
+          sleep 6
+          if pgrep -f "MSRT.app/Contents/MacOS/MSRT" > /dev/null; then
+            echo "MSRT.app launched successfully"
+            pkill -f "MSRT.app/Contents/MacOS/MSRT" || true
+          else
+            echo "MSRT.app did not appear to launch"
+            exit 1
+          fi
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: MSRT-macos
+          path: |
+            dist/MSRT.app
+            dist/MSRT.dmg
+          retention-days: 30
+
+      - name: Attach .dmg to GitHub Release
+        if: startsWith(github.ref, 'refs/tags/v')
+        uses: softprops/action-gh-release@v2
+        with:
+          files: dist/MSRT.dmg
